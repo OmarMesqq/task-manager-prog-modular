@@ -6,6 +6,7 @@ UNITY := unity/unity.c
 testes:
 	gcc -O3 -Wall -Wextra \
 	src/Principal.c \
+	src/Time.c \
 	$(TESTS) \
 	$(UNITY) \
 	-o testes-task-manager

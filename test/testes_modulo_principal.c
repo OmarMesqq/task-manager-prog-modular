@@ -4,12 +4,12 @@
 
 static void teste_inicializacao_do_sistema();
 static void teste_encerramento_do_sistema();
-static void teste_criacao_de_entidades();
+static void teste_criacao_de_entidades_com_sucesso();
 
 void roda_testes_modulo_principal() {
     RUN_TEST(teste_inicializacao_do_sistema);
     RUN_TEST(teste_encerramento_do_sistema);
-    RUN_TEST(teste_criacao_de_entidades);
+    RUN_TEST(teste_criacao_de_entidades_com_sucesso);
 }
 
 static void teste_inicializacao_do_sistema() {
@@ -35,7 +35,7 @@ static void teste_encerramento_do_sistema() {
     //TODO: testar persistência
 }
 
-static void teste_criacao_de_entidades() {
+static void teste_criacao_de_entidades_com_sucesso() {
     Principal* p;
     p = principal_iniciar();
     TEST_ASSERT_NOT_NULL(p);

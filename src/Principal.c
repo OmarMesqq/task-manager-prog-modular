@@ -1,4 +1,5 @@
 #include "Principal.h"
+#include "Time.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -33,7 +34,7 @@ Principal* principal_iniciar(void) {
     }
     Principal* contexto = malloc(sizeof(Principal));
     if (!contexto) {
-        printf("Falha de alocação de memória ao alocar Principal!\n");
+        printf("Falha de alocação de memória ao criar Principal!\n");
         return NULL;
     }
 
@@ -78,7 +79,28 @@ void principal_encerrar(Principal* p) {
  * @return `Time*` em caso de sucesso ou `NULL` em caso de erro
  */
 Time* principal_criar_time(Principal* p, const char* nome) {
-    return NULL;
+    if (!nome) {
+        printf("Time deve ter um nome válido!");
+        return NULL;
+    }
+    Time* novoTime = time_criar(nome);
+    if (!novoTime) {
+        printf("Falha de alocação de memória ao criar Time!\n");
+        return NULL;
+    }
+
+    Time** nova_lista = realloc(p->listaTimes, (p->qtdTimes + 1) * sizeof(Time*));
+    if (!nova_lista) {
+        printf("Erro de realocação ao adicionar novo time.\n");
+        free(novoTime);  // Libera o time alocado se realloc falhar
+        return NULL;
+    }
+
+    nova_lista[p->qtdTimes] = novoTime;
+    p->listaTimes = nova_lista;
+    p->qtdTimes++;
+
+    return novoTime;
 }
 
 /**
