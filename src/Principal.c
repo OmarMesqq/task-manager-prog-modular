@@ -35,5 +35,34 @@ Principal* principal_iniciar(void) {
         return NULL;
     }
 
+    contexto->listaTags = NULL;
+    contexto->qtdTags = 0;
+    contexto->listaTimes = NULL;
+    contexto->qtdTimes = 0;
+    contexto->listaUsuarios = NULL;
+    contexto->qtdUsuarios = 0;    
+
     return contexto;
+}
+
+/**
+ * Libera memória utilizada pelo app e persiste prefências
+ */
+void principal_encerrar(Principal* p) {
+    //TODO: persistência 
+
+    // Libera tags
+    for (size_t i = 0; i < p->qtdTags; i++) {
+        free(p->listaTags[i]);
+    }
+
+    // Libera usuários
+    for (size_t i = 0; i < p->qtdUsuarios; i++) {
+        free(p->listaUsuarios[i]);
+    }
+
+    // Libera times
+    for (size_t i = 0; i < p->qtdTimes; i++) {
+        free(p->listaTimes[i]);
+    }
 }
