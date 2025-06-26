@@ -11,9 +11,16 @@
 #include "GT.h"
 
 /**
- * "Super" tipo que engloba o contexto do app e demais alocações
+ * Tipo propositalmente opaco no .h para encapsular o TAD 
+ * e forçar o uso das funções de acesso
  */
 typedef struct Principal Principal;
+
+/**
+ * Nome do arquivo de prefências de um uso do Task Manager.
+ * É imutável e inacessível para demais módulos
+ */
+static const char* ARQUIVO_PREFERENCIAS_TASK_MANAGER = "preferencias.json";
 
 /* === ciclo de vida do app === */
 Principal* principal_iniciar(void);                  /* carrega dependências, configura GT... */
