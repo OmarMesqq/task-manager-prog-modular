@@ -1,5 +1,5 @@
 #include "../unity/unity.h"
-
+#include "testes_modulo_principal.h"
 
 /**
  * Para saídas claras ao rodar testes
@@ -14,22 +14,10 @@
 void setUp(void) {}
 void tearDown(void) {}
 
-/**
- * Rotinas dos testes individuais de cada módulo
- */
-static void roda_testes_modulo_principal();
-
 int main() {
     UNITY_BEGIN();
 
-    RUN_TEST(roda_testes_modulo_principal);
+    roda_testes_modulo_principal();
     
     return UNITY_END();
-}
-
-static void roda_testes_modulo_principal() {
-    int a = 1;
-    
-    TEST_ASSERT( a == 1 );
-    printf(VERDE "Testes do módulo principal passaram!\n" RESETAR_COR);
 }

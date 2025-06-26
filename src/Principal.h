@@ -10,10 +10,12 @@
 #include "Tarefa.h"
 #include "GT.h"
 
-/* --- tipo opaco --- */
+/**
+ * "Super" tipo que engloba o contexto do app e demais alocações
+ */
 typedef struct Principal Principal;
 
-/* === ciclo de vida do “app” === */
+/* === ciclo de vida do app === */
 Principal* principal_iniciar(void);                  /* carrega dependências, configura GT... */
 void principal_encerrar(Principal* p);               /* fecha GT, libera heap, persiste estado */
 
@@ -54,7 +56,7 @@ int  principal_excluir_tag         (Principal *p, Tag *tag);
 
 const Tag **principal_listar_tags  (const Principal *p, size_t *out_qtd);
 
-/* ========== Operações sobre tarefas (via GT) ========== */
+/* ========== Operações sobre tarefas (via módulo gerenciamento de tarefas) ========== */
 Tarefa *principal_nova_tarefa      (Principal *p,
                                     Time *time,
                                     const char *titulo,
