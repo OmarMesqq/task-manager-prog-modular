@@ -33,9 +33,7 @@ int principal_excluir_time(Principal* p, Time* time);
 const Time** principal_listar_times(const Principal* p, size_t* out_qtd);
 
 /* ========= CRUD: Usuário ========= */
-Usuario *principal_criar_usuario   (Principal *p,
-                                    const char *nome,
-                                    const char *email);
+Usuario *principal_criar_usuario   (Principal *p, const char *nome, const char *email);
 
 int      principal_alterar_email   (Principal *p,
                                     Usuario *u,
@@ -47,9 +45,7 @@ const Usuario **principal_listar_usuarios(const Principal *p, size_t *out_qtd);
 
 
 /* ========= CRUD: Tag ========= */
-Tag *principal_criar_tag           (Principal *p,
-                                    const char *nome,
-                                    const char *cor_hex);
+Tag* principal_criar_tag(Principal *p, const char *nome, const char* cor_hex);
 
 int  principal_renomear_tag        (Principal *p,
                                     Tag *tag,

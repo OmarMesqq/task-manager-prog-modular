@@ -19,11 +19,13 @@ typedef struct Principal {
 
 /**
  * Inicializa o contexto global do app e configura o módulo Principal para que seja usado
- * @returns `NULL` em caso de erro ou `Principal*` em caso de sucesso
+ * @param void apenas inicializa estrutura
+ * @return `NULL` em caso de erro ou `Principal*` em caso de sucesso
  */
 Principal* principal_iniciar(void) {
     FILE* preferencias = fopen(ARQUIVO_PREFERENCIAS_TASK_MANAGER, "r");
 
+    //TODO
     if (preferencias) {
         // Já existem dados persistidos    
     } else {
@@ -47,6 +49,8 @@ Principal* principal_iniciar(void) {
 
 /**
  * Libera memória utilizada pelo app e persiste prefências
+ * @param p ponteiro para struct Principal
+ * @return nenhum. Apenas libera memória
  */
 void principal_encerrar(Principal* p) {
     //TODO: persistência 
@@ -65,4 +69,36 @@ void principal_encerrar(Principal* p) {
     for (size_t i = 0; i < p->qtdTimes; i++) {
         free(p->listaTimes[i]);
     }
+}
+
+/**
+ * Cria uma nova entidade `Time`
+ * @param p ponteiro para struct Principal
+ * @param nome do time a ser criado
+ * @return `Time*` em caso de sucesso ou `NULL` em caso de erro
+ */
+Time* principal_criar_time(Principal* p, const char* nome) {
+    return NULL;
+}
+
+/**
+ * Cria uma nova entidade `Usuario`
+ * @param p ponteiro para struct Principal
+ * @param nome do usuário a ser criado
+ * @param email do usuário a ser criado
+ * @return `Usuario*` em caso de sucesso ou `NULL` em caso de erro
+ */
+Usuario* principal_criar_usuario(Principal *p, const char *nome, const char *email) {
+    return NULL;
+}
+
+/**
+ * Cria uma nova entidade `Usuario`
+ * @param p ponteiro para struct Principal
+ * @param nome da tag a ser criado
+ * @param cor_hex da tag
+ * @return `Tag*` em caso de sucesso ou `NULL` em caso de erro
+ */
+Tag* principal_criar_tag(Principal *p, const char *nome, const char* cor_hex) {
+    return NULL;
 }
