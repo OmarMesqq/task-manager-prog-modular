@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager - Sistema de Gerenciamento de Tarefas</title>
+    
+    <!-- CSS Framework - Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Ícones - Lucide -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Configuração personalizada do Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* Animações personalizadas */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        /* Hover effects */
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        
+        /* Status badges */
+        .status-aberta { @apply bg-blue-100 text-blue-800; }
+        .status-em-progresso { @apply bg-yellow-100 text-yellow-800; }
+        .status-concluida { @apply bg-green-100 text-green-800; }
+        
+        /* Chart container */
+        .chart-container {
+            position: relative;
+            height: 256px;
+            width: 100%;
+        }
+        
+        .chart-container canvas {
+            max-height: 100%;
+            max-width: 100%;
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3b82f6;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <h1 class="text-2xl font-bold text-gray-900">
+                            <i data-lucide="clipboard-list" class="inline w-8 h-8 mr-2 text-primary-600"></i>
+                            Task Manager
+                        </h1>
+                    </div>
+                </div>
+                
+                <nav class="hidden md:flex space-x-8">
+                    <button onclick="showSection('dashboard')" class="nav-link text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                        <i data-lucide="home" class="inline w-4 h-4 mr-1"></i>
+                        Dashboard
+                    </button>
+                    <button onclick="showSection('tasks')" class="nav-link text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                        <i data-lucide="check-square" class="inline w-4 h-4 mr-1"></i>
+                        Tarefas
+                    </button>
+                    <button onclick="showSection('users')" class="nav-link text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                        <i data-lucide="users" class="inline w-4 h-4 mr-1"></i>
+                        Usuários
+                    </button>
+                    <button onclick="showSection('teams')" class="nav-link text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                        <i data-lucide="users-2" class="inline w-4 h-4 mr-1"></i>
+                        Times
+                    </button>
+                    <button onclick="showSection('tags')" class="nav-link text-gray-500 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                        <i data-lucide="tag" class="inline w-4 h-4 mr-1"></i>
+                        Tags
+                    </button>
+                </nav>
+                
+                <!-- Mobile menu button -->
+                <div class="md:hidden">
+                    <button onclick="toggleMobileMenu()" class="text-gray-500 hover:text-gray-900">
+                        <i data-lucide="menu" class="w-6 h-6"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Mobile menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-white border-t border-gray-200">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <button onclick="showSection('dashboard'); toggleMobileMenu()" class="block px-3 py-2 text-gray-500 hover:text-gray-900">Dashboard</button>
+                <button onclick="showSection('tasks'); toggleMobileMenu()" class="block px-3 py-2 text-gray-500 hover:text-gray-900">Tarefas</button>
+                <button onclick="showSection('users'); toggleMobileMenu()" class="block px-3 py-2 text-gray-500 hover:text-gray-900">Usuários</button>
+                <button onclick="showSection('teams'); toggleMobileMenu()" class="block px-3 py-2 text-gray-500 hover:text-gray-900">Times</button>
+                <button onclick="showSection('tags'); toggleMobileMenu()" class="block px-3 py-2 text-gray-500 hover:text-gray-900">Tags</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Loading Indicator -->
+        <div id="loading" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <div class="flex items-center">
+                    <div class="spinner mr-3"></div>
+                    <span>Carregando...</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Dashboard Section -->
+        <section id="dashboard-section" class="section">
+            <div class="mb-8">
+                <h2 class="text-3xl font-bold text-gray-900 mb-2">Dashboard</h2>
+                <p class="text-gray-600">Visão geral do sistema de gerenciamento de tarefas</p>
+            </div>
+            
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-lg shadow card-hover">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-blue-100 rounded-lg">
+                            <i data-lucide="check-square" class="w-6 h-6 text-blue-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Total de Tarefas</p>
+                            <p id="total-tasks" class="text-2xl font-bold text-gray-900">-</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-6 rounded-lg shadow card-hover">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-green-100 rounded-lg">
+                            <i data-lucide="users" class="w-6 h-6 text-green-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Usuários</p>
+                            <p id="total-users" class="text-2xl font-bold text-gray-900">-</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-6 rounded-lg shadow card-hover">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-purple-100 rounded-lg">
+                            <i data-lucide="users-2" class="w-6 h-6 text-purple-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Times</p>
+                            <p id="total-teams" class="text-2xl font-bold text-gray-900">-</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-6 rounded-lg shadow card-hover">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-yellow-100 rounded-lg">
+                            <i data-lucide="tag" class="w-6 h-6 text-yellow-600"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">Tags</p>
+                            <p id="total-tags" class="text-2xl font-bold text-gray-900">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Charts -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Status das Tarefas</h3>
+                    <div class="chart-container">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Tarefas Recentes</h3>
+                    <div id="recent-tasks" class="space-y-3">
+                        <!-- Tarefas recentes serão inseridas aqui -->
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Tasks Section -->
+        <section id="tasks-section" class="section hidden">
+            <div class="mb-8 flex justify-between items-center">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-900 mb-2">Tarefas</h2>
+                    <p class="text-gray-600">Gerencie todas as tarefas do sistema</p>
+                </div>
+                <button onclick="openTaskModal()" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    <i data-lucide="plus" class="inline w-4 h-4 mr-2"></i>
+                    Nova Tarefa
+                </button>
+            </div>
+            
+            <!-- Filters -->
+            <div class="bg-white p-4 rounded-lg shadow mb-6">
+                <div class="flex flex-wrap gap-4">
+                    <select id="status-filter" class="border border-gray-300 rounded-md px-3 py-2">
+                        <option value="">Todos os Status</option>
+                        <option value="TAREFA_ABERTA">Aberta</option>
+                        <option value="TAREFA_EM_PROGRESSO">Em Progresso</option>
+                        <option value="TAREFA_CONCLUIDA">Concluída</option>
+                    </select>
+                    
+                    <select id="user-filter" class="border border-gray-300 rounded-md px-3 py-2">
+                        <option value="">Todos os Usuários</option>
+                    </select>
+                    
+                    <select id="team-filter" class="border border-gray-300 rounded-md px-3 py-2">
+                        <option value="">Todos os Times</option>
+                    </select>
+                    
+                    <button onclick="applyTaskFilters()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md transition-colors">
+                        Filtrar
+                    </button>
+                    
+                    <button onclick="clearTaskFilters()" class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-md transition-colors">
+                        Limpar
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Tasks Grid -->
+            <div id="tasks-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Tarefas serão inseridas aqui -->
+            </div>
+        </section>
+        
+        <!-- Users Section -->
+        <section id="users-section" class="section hidden">
+            <div class="mb-8 flex justify-between items-center">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-900 mb-2">Usuários</h2>
+                    <p class="text-gray-600">Gerencie os usuários do sistema</p>
+                </div>
+                <button onclick="openUserModal()" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    <i data-lucide="user-plus" class="inline w-4 h-4 mr-2"></i>
+                    Novo Usuário
+                </button>
+            </div>
+            
+            <!-- Users Table -->
+            <div class="bg-white shadow rounded-lg overflow-hidden">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Usuários serão inseridos aqui -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        
+        <!-- Teams Section -->
+        <section id="teams-section" class="section hidden">
+            <div class="mb-8 flex justify-between items-center">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-900 mb-2">Times</h2>
+                    <p class="text-gray-600">Gerencie os times e suas equipes</p>
+                </div>
+                <button onclick="openTeamModal()" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    <i data-lucide="users-2" class="inline w-4 h-4 mr-2"></i>
+                    Novo Time
+                </button>
+            </div>
+            
+            <!-- Teams Grid -->
+            <div id="teams-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Times serão inseridos aqui -->
+            </div>
+        </section>
+        
+        <!-- Tags Section -->
+        <section id="tags-section" class="section hidden">
+            <div class="mb-8 flex justify-between items-center">
+                <div>
+                    <h2 class="text-3xl font-bold text-gray-900 mb-2">Tags</h2>
+                    <p class="text-gray-600">Gerencie as tags para categorização</p>
+                </div>
+                <button onclick="openTagModal()" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    <i data-lucide="tag" class="inline w-4 h-4 mr-2"></i>
+                    Nova Tag
+                </button>
+            </div>
+            
+            <!-- Tags Grid -->
+            <div id="tags-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Tags serão inseridas aqui -->
+            </div>
+        </section>
+    </main>
+    
+    <!-- Modals -->
+    <!-- Task Modal -->
+    <div id="task-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Nova Tarefa</h3>
+            <form id="task-form">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Título</label>
+                    <input type="text" id="task-title" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Descrição</label>
+                    <textarea id="task-description" class="w-full border border-gray-300 rounded-md px-3 py-2" rows="3" required></textarea>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Usuário Responsável</label>
+                    <select id="task-user" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                        <option value="">Selecione um usuário</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                    <select id="task-team" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                        <option value="">Selecione um time</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Prazo</label>
+                    <input type="datetime-local" id="task-deadline" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tags</label>
+                    <div id="task-tags" class="flex flex-wrap gap-2">
+                        <!-- Tags serão inseridas aqui -->
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeTaskModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md transition-colors">
+                        Criar Tarefa
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- User Modal -->
+    <div id="user-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Novo Usuário</h3>
+            <form id="user-form">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nome</label>
+                    <input type="text" id="user-name" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input type="email" id="user-email" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeUserModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md transition-colors">
+                        Criar Usuário
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Team Modal -->
+    <div id="team-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Novo Time</h3>
+            <form id="team-form">
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nome do Time</label>
+                    <input type="text" id="team-name" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeTeamModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md transition-colors">
+                        Criar Time
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Tag Modal -->
+    <div id="tag-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md mx-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Nova Tag</h3>
+            <form id="tag-form">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nome</label>
+                    <input type="text" id="tag-name" class="w-full border border-gray-300 rounded-md px-3 py-2" required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Cor</label>
+                    <div class="flex items-center space-x-3">
+                        <input type="color" id="tag-color" class="w-16 h-10 border border-gray-300 rounded-md" value="#3b82f6">
+                        <input type="text" id="tag-color-text" class="flex-1 border border-gray-300 rounded-md px-3 py-2" value="#3b82f6">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeTagModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md transition-colors">
+                        Criar Tag
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2">
+        <!-- Toasts serão inseridos aqui -->
+    </div>
+    
+    <!-- JavaScript -->
+    <script src="js/app.js"></script>
+</body>
+</html>
+
