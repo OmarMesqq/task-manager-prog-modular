@@ -21,6 +21,20 @@ from datetime import datetime
 import sys
 import os
 
+__all__ = [
+    "time_criar",
+    "time_destruir",
+    "time_adicionar_usuario",
+    "time_remover_usuario",
+    "time_qtd_membros",
+    "time_get_nome",
+    "time_get_id",
+    "time_get_membros",
+    "time_set_nome",
+    "time_from_dict",
+    "time_to_dict"
+]
+
 # Adiciona o diretório raiz ao path se não estiver lá
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(current_dir)
@@ -30,7 +44,7 @@ if root_dir not in sys.path:
 from config import SUCESSO, ERRO, MAX_NOME_LENGTH
 from utils import gerar_id_unico, validar_string_nao_vazia, log_operacao, formatar_data
 
-def criar_time_dict(nome: str) -> Dict[str, Any]:
+def _criar_time_dict(nome: str) -> Dict[str, Any]:
     """
     Cria um dicionário representando um time.
     
@@ -119,7 +133,7 @@ def time_criar(nome: str) -> Optional[Dict[str, Any]]:
     
     try:
         # Cria o time
-        time = criar_time_dict(nome.strip())
+        time = _criar_time_dict(nome.strip())
         log_operacao("Time", "Criado com sucesso", f"ID: {time['id']}, Nome: {nome}")
         return time
         

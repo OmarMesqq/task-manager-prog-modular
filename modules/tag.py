@@ -20,6 +20,19 @@ from datetime import datetime
 import sys
 import os
 
+#Encapsulamento
+__all__ = [
+    "tag_criar",
+    "tag_destruir",
+    "tag_set_nome",
+    "tag_set_cor",
+    "tag_get_nome",
+    "tag_get_cor",
+    "tag_get_id",
+    "tag_from_dict",
+    "tag_to_dict"
+]
+
 # Adiciona o diretório raiz ao path se não estiver lá
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(current_dir)
@@ -29,7 +42,7 @@ if root_dir not in sys.path:
 from config import SUCESSO, ERRO, validar_cor_hex, MAX_NOME_LENGTH, MAX_COR_LENGTH
 from utils import gerar_id_unico, validar_string_nao_vazia, log_operacao, formatar_data
 
-def criar_tag_dict(nome: str, cor: str) -> Dict[str, Any]:
+def _criar_tag_dict(nome: str, cor: str) -> Dict[str, Any]:
     """
     Cria um dicionário representando uma tag.
     
@@ -128,7 +141,7 @@ def tag_criar(nome: str, cor: str) -> Optional[Dict[str, Any]]:
     
     try:
         # Cria a tag
-        tag = criar_tag_dict(nome.strip(), cor.upper())
+        tag = _criar_tag_dict(nome.strip(), cor.upper())
         log_operacao("Tag", "Criada com sucesso", f"ID: {tag['id']}, Nome: {nome}, Cor: {cor}")
         return tag
         

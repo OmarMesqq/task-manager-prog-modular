@@ -30,10 +30,10 @@ if root_dir not in sys.path:
 
 from config import SUCESSO, ERRO, USUARIOS_FILE, TAGS_FILE, TIMES_FILE, TAREFAS_FILE
 from utils import salvar_json, carregar_json, log_operacao, exportar_para_csv
-from modules.usuario import usuario_criar, usuario_get_id, usuario_from_dict, usuario_to_dict
-from modules.tag import tag_criar, tag_get_id, tag_from_dict, tag_to_dict
-from modules.team import time_criar, time_get_id, time_from_dict, time_to_dict
-from modules.tarefa import tarefa_criar, tarefa_get_id, tarefa_get_titulo, tarefa_get_descricao, tarefa_get_status, tarefa_get_usuario_responsavel_id, tarefa_get_prazo, tarefa_get_tags_ids, tarefa_from_dict, tarefa_to_dict
+from modules.usuario import *
+from modules.tag import *
+from modules.team import *
+from modules.tarefa import *
 
 def criar_gt_dict() -> Dict[str, Any]:
     """
