@@ -21,6 +21,27 @@ from enum import Enum
 import sys
 import os
 
+#Encapsulamento
+
+__all__ = [
+    "StatusTarefa",
+    "tarefa_criar",
+    "tarefa_destruir",
+    "tarefa_set_status",
+    "tarefa_add_tag",
+    "tarefa_list_tags",
+    "tarefa_get_titulo",
+    "tarefa_get_descricao",
+    "tarefa_get_status",
+    "tarefa_get_usuario_responsavel_id",
+    "tarefa_get_prazo",
+    "tarefa_get_id",
+    "tarefa_get_tags_ids",
+    "tarefa_remover_tag",
+    "tarefa_from_dict",
+    "tarefa_to_dict"
+]
+
 # Adiciona o diretório raiz ao path se não estiver lá
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(current_dir)
@@ -37,7 +58,7 @@ class StatusTarefa(Enum):
     TAREFA_CONCLUIDA = "concluida"
     TAREFA_CANCELADA = "cancelada"
 
-def criar_tarefa_dict(titulo: str, descricao: str, usuario_responsavel, prazo: datetime) -> Dict[str, Any]:
+def _criar_tarefa_dict(titulo: str, descricao: str, usuario_responsavel, prazo: datetime) -> Dict[str, Any]:
     """
     Cria um dicionário representando uma tarefa.
     
@@ -176,7 +197,7 @@ def tarefa_criar(titulo: str, descricao: str, usuario_responsavel, prazo: dateti
     
     try:
         # Cria a tarefa
-        tarefa = criar_tarefa_dict(titulo.strip(), descricao.strip(), usuario_responsavel, prazo)
+        tarefa = _criar_tarefa_dict(titulo.strip(), descricao.strip(), usuario_responsavel, prazo)
         log_operacao("Tarefa", "Criada com sucesso", f"ID: {tarefa['id']}, Título: {titulo}")
         return tarefa
         

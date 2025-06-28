@@ -20,6 +20,19 @@ from datetime import datetime
 import sys
 import os
 
+#Encapsulamento
+
+__all__ = [
+    "usuario_criar",
+    "usuario_destruir",
+    "usuario_set_email",
+    "usuario_get_nome",
+    "usuario_get_email",
+    "usuario_get_id",
+    "usuario_to_dict",
+    "usuario_from_dict"
+]
+
 # Adiciona o diretório raiz ao path se não estiver lá
 current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(current_dir)
@@ -29,7 +42,7 @@ if root_dir not in sys.path:
 from config import SUCESSO, ERRO, validar_email, MAX_NOME_LENGTH, MAX_EMAIL_LENGTH
 from utils import gerar_id_unico, validar_string_nao_vazia, log_operacao, formatar_data
 
-def criar_usuario_dict(nome: str, email: str) -> Dict[str, Any]:
+def _criar_usuario_dict(nome: str, email: str) -> Dict[str, Any]:
     """
     Cria um dicionário representando um usuário.
     
@@ -132,7 +145,7 @@ def usuario_criar(nome: str, email: str) -> Optional[Dict[str, Any]]:
     
     try:
         # Cria o usuário
-        usuario = criar_usuario_dict(nome.strip(), email.strip().lower())
+        usuario = _criar_usuario_dict(nome.strip(), email.strip().lower())
         log_operacao("Usuario", "Criado com sucesso", f"ID: {usuario['id']}, Nome: {nome}")
         return usuario
         
