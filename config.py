@@ -8,10 +8,25 @@ pelo sistema de gerenciamento de tarefas.
 from datetime import datetime
 import os
 
+# Detecta o caminho correto baseado no local de execução
+def get_project_root():
+    """Retorna o caminho raiz do projeto"""
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Se estamos executando a partir da aplicação web
+    if 'web/task_manager_web/src' in current_dir:
+        # Sobe 3 níveis para chegar na raiz do projeto
+        return os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+    
+    # Se estamos na raiz do projeto
+    return current_dir
+
+PROJECT_ROOT = get_project_root()
+
 # Configurações de arquivo
-DATA_DIR = "data"
-BACKUP_DIR = "backup"
-EXPORT_DIR = "exports"
+DATA_DIR = os.path.join(PROJECT_ROOT, "data")
+BACKUP_DIR = os.path.join(PROJECT_ROOT, "backup")
+EXPORT_DIR = os.path.join(PROJECT_ROOT, "exports")
 
 # Configurações de persistência
 USUARIOS_FILE = "usuarios.json"

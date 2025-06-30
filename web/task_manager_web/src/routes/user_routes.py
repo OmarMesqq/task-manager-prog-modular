@@ -22,7 +22,7 @@ try:
     )
     from modules.usuario import (
         usuario_criar, usuario_destruir, usuario_set_email,
-        usuario_get_id, usuario_get_nome, usuario_get_email
+        usuario_get_id, usuario_get_nome, usuario_get_email, usuario_set_nome
     )
 except ImportError as e:
     print(f"Erro ao importar módulos do Task Manager: {e}")
@@ -144,13 +144,21 @@ def atualizar_usuario(user_id):
         if not usuario:
             return jsonify({'error': 'Usuário não encontrado'}), 404
         
+        atualizado = False
+        # Atualiza nome se fornecido
+        if 'nome' in data:
+            resultado_nome = usuario_set_nome(usuario, data['nome'])
+            if resultado_nome != 0:
+                return jsonify({'error': 'Falha ao atualizar nome'}), 500
+            atualizado = True
         # Atualiza email se fornecido
         if 'email' in data:
             resultado = usuario_set_email(usuario, data['email'])
             if resultado != 0:
                 return jsonify({'error': 'Falha ao atualizar email'}), 500
-            
-            # Salva os dados após atualizar
+            atualizado = True
+        # Salva os dados após atualizar
+        if atualizado:
             gt_salvar_dados(gt)
         
         return jsonify({

@@ -8,6 +8,7 @@ Funções principais:
 - usuario_criar: Cria um novo usuário
 - usuario_destruir: Libera recursos de um usuário
 - usuario_set_email: Altera o email de um usuário
+- usuario_set_nome: Altera o nome de um usuário
 - usuario_get_nome: Obtém o nome de um usuário
 - usuario_get_email: Obtém o email de um usuário
 
@@ -26,6 +27,7 @@ __all__ = [
     "usuario_criar",
     "usuario_destruir",
     "usuario_set_email",
+    "usuario_set_nome",
     "usuario_get_nome",
     "usuario_get_email",
     "usuario_get_id",
@@ -213,6 +215,38 @@ def usuario_set_email(usuario: Dict[str, Any], novo_email: str) -> int:
         
     except Exception as e:
         log_operacao("Usuario", "Erro ao alterar email", f"Falha: {str(e)}")
+        return ERRO
+
+def usuario_set_nome(usuario: Dict[str, Any], novo_nome: str) -> int:
+    """
+    Altera o nome do usuário.
+    Args:
+        usuario (Dict): Usuário em formato dicionário
+        novo_nome (str): Novo nome do usuário
+    Returns:
+        int: 0 para sucesso, -1 para erro
+    """
+    if usuario is None:
+        log_operacao("Usuario", "Erro ao alterar nome", "Ponteiro de usuário nulo")
+        return ERRO
+
+    if not validar_string_nao_vazia(novo_nome, "novo_nome"):
+        log_operacao("Usuario", "Erro ao alterar nome", "Nome inválido")
+        return ERRO
+
+    if len(novo_nome) > MAX_NOME_LENGTH:
+        log_operacao("Usuario", "Erro ao alterar nome", f"Nome muito longo (max {MAX_NOME_LENGTH})")
+        return ERRO
+
+    try:
+        nome_antigo = usuario['nome']
+        usuario['nome'] = novo_nome.strip()
+        usuario['data_modificacao'] = datetime.now()
+        log_operacao("Usuario", "Nome alterado", f"ID: {usuario['id']}, De: {nome_antigo} Para: {novo_nome}")
+        return SUCESSO
+
+    except Exception as e:
+        log_operacao("Usuario", "Erro ao alterar nome", f"Falha: {str(e)}")
         return ERRO
 
 def usuario_get_nome(usuario: Dict[str, Any]) -> Optional[str]:

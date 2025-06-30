@@ -259,17 +259,17 @@
                 <div class="flex flex-wrap gap-4">
                     <select id="status-filter" class="border border-gray-300 rounded-md px-3 py-2">
                         <option value="">Todos os Status</option>
-                        <option value="TAREFA_ABERTA">Aberta</option>
-                        <option value="TAREFA_EM_PROGRESSO">Em Progresso</option>
-                        <option value="TAREFA_CONCLUIDA">Concluída</option>
+                        <option value="aberta">Aberta</option>
+                        <option value="em_progresso">Em Progresso</option>
+                        <option value="concluida">Concluída</option>
                     </select>
                     
                     <select id="user-filter" class="border border-gray-300 rounded-md px-3 py-2">
                         <option value="">Todos os Usuários</option>
                     </select>
                     
-                    <select id="team-filter" class="border border-gray-300 rounded-md px-3 py-2">
-                        <option value="">Todos os Times</option>
+                    <select id="team-filter" class="border border-gray-300 rounded-md px-3 py-2" disabled>
+                        <option value="">Filtro por Time (Em desenvolvimento)</option>
                     </select>
                     
                     <button onclick="applyTaskFilters()" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md transition-colors">

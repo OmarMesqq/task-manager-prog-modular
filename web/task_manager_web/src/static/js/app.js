@@ -16,7 +16,12 @@ let appState = {
     teams: [],
     tags: [],
     stats: {},
-    selectedTags: []
+    selectedTags: [],
+    activeFilters: {
+        status: '',
+        user: '',
+        team: ''
+    }
 };
 
 // Variável global para o gráfico de status
@@ -497,19 +502,39 @@ function renderRecentTasks() {
 function renderTasks() {
     const container = document.getElementById('tasks-grid');
     
-    if (appState.tasks.length === 0) {
+    // Aplica os filtros ativos
+    let filteredTasks = appState.tasks.filter(task => {
+        // Filtro por status
+        if (appState.activeFilters.status && task.status !== appState.activeFilters.status) {
+            return false;
+        }
+        
+        // Filtro por usuário
+        if (appState.activeFilters.user && task.usuario_responsavel_id !== parseInt(appState.activeFilters.user)) {
+            return false;
+        }
+        
+        // Filtro por time - temporariamente desabilitado até implementação no backend
+        // if (appState.activeFilters.team && task.time_id !== parseInt(appState.activeFilters.team)) {
+        //     return false;
+        // }
+        
+        return true;
+    });
+    
+    if (filteredTasks.length === 0) {
         container.innerHTML = `
             <div class="col-span-full text-center py-12">
                 <i data-lucide="clipboard-list" class="w-16 h-16 text-gray-300 mx-auto mb-4"></i>
                 <h3 class="text-lg font-medium text-gray-900 mb-2">Nenhuma tarefa encontrada</h3>
-                <p class="text-gray-600">Crie sua primeira tarefa para começar.</p>
+                <p class="text-gray-600">${appState.activeFilters.status || appState.activeFilters.user ? 'Tente ajustar os filtros aplicados.' : 'Crie sua primeira tarefa para começar.'}</p>
             </div>
         `;
         lucide.createIcons();
         return;
     }
     
-    container.innerHTML = appState.tasks.map(task => {
+    container.innerHTML = filteredTasks.map(task => {
         const user = appState.users.find(u => u.id === task.usuario_responsavel_id);
         const taskTags = appState.tags.filter(tag => task.tags_ids && task.tags_ids.includes(tag.id));
         
@@ -695,6 +720,16 @@ function openUserModal() {
 function closeUserModal() {
     document.getElementById('user-modal').classList.add('hidden');
     document.getElementById('user-form').reset();
+    
+    // Reseta o estado do modal
+    const modalTitle = document.querySelector('#user-modal h3');
+    const submitButton = document.querySelector('#user-form button[type="submit"]');
+    
+    modalTitle.textContent = 'Novo Usuário';
+    submitButton.textContent = 'Criar Usuário';
+    
+    // Remove o ID de edição
+    document.getElementById('user-form').removeAttribute('data-edit-user-id');
 }
 
 function openTeamModal() {
@@ -756,8 +791,19 @@ async function handleUserForm(event) {
             email: document.getElementById('user-email').value
         };
         
-        await api.users.create(userData);
-        ui.showToast('Usuário criado com sucesso!', 'success');
+        // Verifica se é uma edição ou criação
+        const editUserId = document.getElementById('user-form').getAttribute('data-edit-user-id');
+        
+        if (editUserId) {
+            // É uma edição
+            await api.users.update(parseInt(editUserId), userData);
+            ui.showToast('Usuário atualizado com sucesso!', 'success');
+        } else {
+            // É uma criação
+            await api.users.create(userData);
+            ui.showToast('Usuário criado com sucesso!', 'success');
+        }
+        
         closeUserModal();
         
         if (appState.currentSection === 'users') {
@@ -765,7 +811,7 @@ async function handleUserForm(event) {
         }
         
     } catch (error) {
-        ui.showToast(`Erro ao criar usuário: ${error.message}`, 'error');
+        ui.showToast(`Erro ao ${editUserId ? 'atualizar' : 'criar'} usuário: ${error.message}`, 'error');
     } finally {
         ui.hideLoading();
     }
@@ -951,15 +997,107 @@ async function deleteTask(taskId) {
 }
 
 function applyTaskFilters() {
-    // Implementar filtros de tarefas
-    ui.showToast('Filtros aplicados!', 'info');
+    // Captura os valores dos filtros
+    const statusFilter = document.getElementById('status-filter').value;
+    const userFilter = document.getElementById('user-filter').value;
+    const teamFilter = document.getElementById('team-filter').value;
+    
+    // Atualiza o estado dos filtros ativos
+    appState.activeFilters = {
+        status: statusFilter,
+        user: userFilter,
+        team: teamFilter
+    };
+    
+    // Renderiza as tarefas com os filtros aplicados
+    renderTasks();
+    
+    ui.showToast('Filtros aplicados!', 'success');
 }
 
 function clearTaskFilters() {
+    // Limpa os campos dos filtros
     document.getElementById('status-filter').value = '';
     document.getElementById('user-filter').value = '';
     document.getElementById('team-filter').value = '';
+    
+    // Limpa o estado dos filtros ativos
+    appState.activeFilters = {
+        status: '',
+        user: '',
+        team: ''
+    };
+    
+    // Renderiza todas as tarefas
     renderTasks();
+    
+    ui.showToast('Filtros limpos!', 'info');
+}
+
+// Funções para editar usuário e ver tarefas
+async function editUser(userId) {
+    try {
+        // Busca os dados do usuário
+        const user = appState.users.find(u => u.id === userId);
+        if (!user) {
+            ui.showToast('Usuário não encontrado', 'error');
+            return;
+        }
+        
+        // Preenche o modal com os dados do usuário
+        document.getElementById('user-name').value = user.nome;
+        document.getElementById('user-email').value = user.email;
+        
+        // Altera o título e botão do modal
+        const modalTitle = document.querySelector('#user-modal h3');
+        const submitButton = document.querySelector('#user-form button[type="submit"]');
+        
+        modalTitle.textContent = 'Editar Usuário';
+        submitButton.textContent = 'Atualizar Usuário';
+        
+        // Adiciona o ID do usuário ao formulário para identificação
+        document.getElementById('user-form').setAttribute('data-edit-user-id', userId);
+        
+        // Abre o modal
+        openUserModal();
+        
+    } catch (error) {
+        ui.showToast(`Erro ao carregar dados do usuário: ${error.message}`, 'error');
+    }
+}
+
+async function viewUserTasks(userId) {
+    try {
+        // Busca o usuário para obter o nome
+        const user = appState.users.find(u => u.id === userId);
+        if (!user) {
+            ui.showToast('Usuário não encontrado', 'error');
+            return;
+        }
+        
+        // Define o filtro de usuário
+        appState.activeFilters = {
+            status: '',
+            user: userId.toString(),
+            team: ''
+        };
+        
+        // Atualiza o filtro na interface
+        document.getElementById('user-filter').value = userId;
+        document.getElementById('status-filter').value = '';
+        document.getElementById('team-filter').value = '';
+        
+        // Muda para a seção de tarefas
+        showSection('tasks');
+        
+        // Recarrega os dados das tarefas
+        await loadTasksData();
+        
+        ui.showToast(`Mostrando tarefas de ${user.nome}`, 'info');
+        
+    } catch (error) {
+        ui.showToast(`Erro ao carregar tarefas do usuário: ${error.message}`, 'error');
+    }
 }
 
 // Event Listeners
@@ -1009,4 +1147,6 @@ window.updateTaskStatus = updateTaskStatus;
 window.deleteTask = deleteTask;
 window.applyTaskFilters = applyTaskFilters;
 window.clearTaskFilters = clearTaskFilters;
+window.editUser = editUser;
+window.viewUserTasks = viewUserTasks;
 

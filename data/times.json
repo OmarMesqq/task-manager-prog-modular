@@ -1,51 +1,16 @@
 {
-  "1750949424843900": {
-    "id": 1750949424843900,
-    "nome": "Projeto Modular",
-    "membros": [],
-    "data_criacao": "2025-06-26 11:50:24",
-    "data_modificacao": "2025-06-26 11:50:24"
-  },
-  "1750956893901089": {
-    "id": 1750956893901089,
+  "1750956654776471": {
+    "id": 1750956654776471,
     "nome": "Equipe de Desenvolvimento",
     "membros": [],
-    "data_criacao": "2025-06-26 13:54:53",
-    "data_modificacao": "2025-06-26 13:54:53"
+    "data_criacao": "2025-06-26 13:50:54",
+    "data_modificacao": "2025-06-26 13:50:54"
   },
-  "1750956893902224": {
-    "id": 1750956893902224,
-    "nome": "Equipe de Desenvolvimento",
+  "1750956654778680": {
+    "id": 1750956654778680,
+    "nome": "Equipe de Marketing",
     "membros": [],
-    "data_criacao": "2025-06-26 13:54:53",
-    "data_modificacao": "2025-06-26 13:54:53"
-  },
-  "1750956893903466": {
-    "id": 1750956893903466,
-    "nome": "Equipe de Desenvolvimento",
-    "membros": [],
-    "data_criacao": "2025-06-26 13:54:53",
-    "data_modificacao": "2025-06-26 13:54:53"
-  },
-  "1750956893904760": {
-    "id": 1750956893904760,
-    "nome": "Equipe de Desenvolvimento",
-    "membros": [],
-    "data_criacao": "2025-06-26 13:54:53",
-    "data_modificacao": "2025-06-26 13:54:53"
-  },
-  "1750956893905678": {
-    "id": 1750956893905678,
-    "nome": "Equipe de Desenvolvimento",
-    "membros": [],
-    "data_criacao": "2025-06-26 13:54:53",
-    "data_modificacao": "2025-06-26 13:54:53"
-  },
-  "1750956893909534": {
-    "id": 1750956893909534,
-    "nome": "Equipe de Desenvolvimento",
-    "membros": [],
-    "data_criacao": "2025-06-26 13:54:53",
-    "data_modificacao": "2025-06-26 13:54:53"
+    "data_criacao": "2025-06-26 13:50:54",
+    "data_modificacao": "2025-06-26 13:50:54"
   }
 }
