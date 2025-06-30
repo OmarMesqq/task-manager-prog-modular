@@ -75,7 +75,7 @@ def ensure_gt_initialized():
     global _gt_system
     
     # Verifica se o sistema GT está disponível na configuração
-    if not app.config.get('GT_SYSTEM'):
+    if app.config.get('GT_SYSTEM') is None:
         print("🔄 GT não encontrado na configuração, reinicializando...")
         try:
             from modules.gerenciamento_tarefas import gt_inicializar

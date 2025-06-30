@@ -52,7 +52,7 @@ def listar_usuarios():
     """Lista todos os usuários"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Usa a função do módulo usuario diretamente
@@ -73,7 +73,7 @@ def criar_usuario():
     """Cria um novo usuário"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         data = request.get_json()
@@ -109,7 +109,7 @@ def obter_usuario(user_id):
     """Obtém um usuário específico"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Usa a função do módulo usuario diretamente
@@ -132,7 +132,7 @@ def atualizar_usuario(user_id):
     """Atualiza um usuário existente"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         data = request.get_json()
@@ -174,7 +174,7 @@ def deletar_usuario(user_id):
     """Deleta um usuário"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Busca o usuário
@@ -200,7 +200,7 @@ def listar_tarefas_usuario(user_id):
     """Lista todas as tarefas de um usuário específico"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Busca o usuário

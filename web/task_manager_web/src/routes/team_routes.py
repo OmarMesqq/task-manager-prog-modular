@@ -50,7 +50,7 @@ def listar_times():
     """Lista todos os times"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Usa a função do módulo team diretamente
@@ -71,7 +71,7 @@ def criar_time():
     """Cria um novo time"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         data = request.get_json()
@@ -107,7 +107,7 @@ def obter_time(team_id):
     """Obtém um time específico"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Usa a função do módulo team diretamente
@@ -130,7 +130,7 @@ def atualizar_time(team_id):
     """Atualiza um time existente"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         data = request.get_json()
@@ -164,7 +164,7 @@ def deletar_time(team_id):
     """Deleta um time"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Busca o time
@@ -190,7 +190,7 @@ def adicionar_usuario_time(team_id):
     """Adiciona um usuário a um time"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         data = request.get_json()
@@ -233,7 +233,7 @@ def remover_usuario_time(team_id, user_id):
     """Remove um usuário de um time"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Busca o time
@@ -269,7 +269,7 @@ def listar_usuarios_time(team_id):
     """Lista todos os usuários de um time"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Busca o time
