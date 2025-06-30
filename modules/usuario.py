@@ -268,9 +268,16 @@ def usuario_destruir(usuario: Dict[str, Any]) -> None:
         log_operacao("Usuario", "Erro ao destruir", "Ponteiro nulo")
         return
     
+    # ① Remove do dicionário encapsulado
+    usuario_id = usuario_get_id(usuario)
+    if usuario_id in _usuarios_registrados:
+        del _usuarios_registrados[usuario_id]
+        log_operacao("Usuario", "Removido do registro", f"ID: {usuario_id}")
+    else:
+        log_operacao("Usuario", "Aviso ao destruir", f"ID {usuario_id} não encontrado no registro")
+    
     log_operacao("Usuario", "Destruído", f"ID: {usuario['id']}")
-    # Em Python, o garbage collector cuida da liberação de memória
-    # Mas podemos limpar as referências explicitamente se necessário
+    # ② Limpa a instância passada (caso haja referências externas)
     usuario.clear()
 
 def usuario_set_email(usuario: Dict[str, Any], novo_email: str) -> int:
