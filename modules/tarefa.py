@@ -13,6 +13,13 @@ Funções principais:
 
 Conforme especificação: O módulo não conhece nem depende dos outros módulos.
 Ele apenas expõe sua interface por meio de funções públicas.
+
+ESTRUTURAS ENCAPSULADAS:
+- _tarefas_registradas: Dicionário com todas as tarefas registradas em memória
+- tarefa_carregar_dados: Carrega tarefas dos arquivos JSON
+- tarefa_salvar_dados: Salva tarefas nos arquivos JSON
+- tarefa_registrar: Registra uma tarefa no sistema
+- tarefa_listar_todas: Lista todas as tarefas registradas
 """
 
 from typing import Optional, List, Dict, Any
@@ -39,7 +46,14 @@ __all__ = [
     "tarefa_get_tags_ids",
     "tarefa_remover_tag",
     "tarefa_from_dict",
-    "tarefa_to_dict"
+    "tarefa_to_dict",
+    "tarefa_carregar_dados",
+    "tarefa_salvar_dados",
+    "tarefa_registrar",
+    "tarefa_listar_todas",
+    "tarefa_set_titulo",
+    "tarefa_set_descricao",
+    "tarefa_set_prazo"
 ]
 
 # Adiciona o diretório raiz ao path se não estiver lá
@@ -48,8 +62,11 @@ root_dir = os.path.dirname(current_dir)
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
-from config import SUCESSO, ERRO, MAX_TITULO_LENGTH, MAX_DESCRICAO_LENGTH
-from utils import gerar_id_unico, validar_string_nao_vazia, log_operacao, formatar_data
+from config import SUCESSO, ERRO, MAX_TITULO_LENGTH, MAX_DESCRICAO_LENGTH, TAREFAS_FILE
+from utils import gerar_id_unico, validar_string_nao_vazia, log_operacao, formatar_data, carregar_json, salvar_json
+
+# Estrutura encapsulada para armazenar todas as tarefas registradas
+_tarefas_registradas: Dict[int, Dict[str, Any]] = {}
 
 class StatusTarefa(Enum):
     """Enumeração dos possíveis status de uma tarefa"""
@@ -142,6 +159,90 @@ def tarefa_from_dict(dados: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         print(f"Dados: {dados}")
         return None
 
+# Funções de gerenciamento das estruturas encapsuladas
+
+def tarefa_carregar_dados() -> None:
+    """
+    Carrega todas as tarefas dos arquivos JSON para a estrutura encapsulada.
+    Esta função é chamada apenas uma vez durante a inicialização.
+    """
+    try:
+        dados_tarefas = carregar_json(TAREFAS_FILE)
+        if dados_tarefas:
+            for tarefa_data in dados_tarefas.values():
+                tarefa = tarefa_from_dict(tarefa_data)
+                if tarefa:
+                    _tarefas_registradas[tarefa['id']] = tarefa
+        
+        log_operacao("Tarefa", "Dados carregados", f"Total de tarefas: {len(_tarefas_registradas)}")
+                    
+    except Exception as e:
+        log_operacao("Tarefa", "Erro ao carregar dados", str(e))
+
+def tarefa_salvar_dados() -> bool:
+    """
+    Salva todas as tarefas da estrutura encapsulada nos arquivos JSON.
+    Esta função é chamada apenas uma vez durante a finalização.
+    
+    Returns:
+        bool: True se salvou com sucesso, False caso contrário
+    """
+    try:
+        dados_tarefas = {str(tid): tarefa_to_dict(tarefa) for tid, tarefa in _tarefas_registradas.items()}
+        if salvar_json(dados_tarefas, TAREFAS_FILE):
+            log_operacao("Tarefa", "Dados salvos", f"Total de tarefas: {len(_tarefas_registradas)}")
+            return True
+        else:
+            log_operacao("Tarefa", "Erro ao salvar dados", "Falha na persistência")
+            return False
+        
+    except Exception as e:
+        log_operacao("Tarefa", "Erro ao salvar dados", str(e))
+        return False
+
+def tarefa_registrar(tarefa: Dict[str, Any]) -> int:
+    """
+    Registra uma tarefa na estrutura encapsulada.
+    
+    Args:
+        tarefa (Dict): Tarefa em formato dicionário a ser registrada
+        
+    Returns:
+        int: 0 para sucesso, -1 para erro
+    """
+    if tarefa is None:
+        log_operacao("Tarefa", "Erro ao registrar", "Ponteiro Tarefa nulo")
+        return ERRO
+    
+    try:
+        tarefa_id = tarefa_get_id(tarefa)
+        if tarefa_id is None:
+            log_operacao("Tarefa", "Erro ao registrar", "ID da tarefa inválido")
+            return ERRO
+        
+        # Verifica se a tarefa já está registrada
+        if tarefa_id in _tarefas_registradas:
+            log_operacao("Tarefa", "Erro ao registrar", f"Tarefa {tarefa_id} já registrada")
+            return ERRO
+        
+        # Registra a tarefa
+        _tarefas_registradas[tarefa_id] = tarefa
+        log_operacao("Tarefa", "Tarefa registrada", f"ID: {tarefa_id}")
+        return SUCESSO
+        
+    except Exception as e:
+        log_operacao("Tarefa", "Erro ao registrar", f"Falha: {str(e)}")
+        return ERRO
+
+def tarefa_listar_todas() -> List[Dict[str, Any]]:
+    """
+    Lista todas as tarefas registradas na estrutura encapsulada.
+    
+    Returns:
+        List[Dict]: Lista de todas as tarefas em formato dicionário
+    """
+    return list(_tarefas_registradas.values())
+
 # Funções da interface pública (conforme especificação)
 
 def tarefa_criar(titulo: str, descricao: str, usuario_responsavel, prazo: datetime) -> Optional[Dict[str, Any]]:
@@ -210,8 +311,8 @@ def tarefa_destruir(tarefa: Dict[str, Any]) -> None:
     Libera os recursos alocados pela tarefa.
     
     Conforme especificação:
-    Entrada: Ponteiro para a struct Tarefa
-    Saída: nenhuma (libera a memória alocada)
+    Entrada: ponteiro para a struct Tarefa
+    Saída: nenhuma (libera os recursos alocados)
     
     Args:
         tarefa (Dict): Tarefa em formato dicionário a ser destruída
@@ -229,8 +330,8 @@ def tarefa_set_status(tarefa: Dict[str, Any], status: StatusTarefa) -> int:
     Altera o status da tarefa.
     
     Conforme especificação:
-    Entrada: Ponteiro para a struct Tarefa, enum de status da tarefa (StatusTarefa)
-    Saída: inteiro indicando sucesso (0) ou erro (por exemplo, tarefa inexistente)
+    Entrada: ponteiro para a struct Tarefa e novo status
+    Saída: 0 em caso de sucesso, -1 em caso de erro
     
     Args:
         tarefa (Dict): Tarefa em formato dicionário
@@ -255,7 +356,8 @@ def tarefa_set_status(tarefa: Dict[str, Any], status: StatusTarefa) -> int:
         status_antigo = tarefa['status']
         tarefa['status'] = status
         tarefa['data_modificacao'] = datetime.now()
-        log_operacao("Tarefa", "Status alterado", f"ID: {tarefa['id']}, De: {status_antigo.value if hasattr(status_antigo, 'value') else status_antigo} Para: {status.value}")
+        
+        log_operacao("Tarefa", "Status alterado", f"ID: {tarefa['id']}, '{status_antigo.value}' -> '{status.value}'")
         return SUCESSO
         
     except Exception as e:
@@ -264,17 +366,17 @@ def tarefa_set_status(tarefa: Dict[str, Any], status: StatusTarefa) -> int:
 
 def tarefa_get_status(tarefa: Dict[str, Any]) -> Optional[StatusTarefa]:
     """
-    Obtém o status atual da tarefa.
+    Obtém o status da tarefa.
     
     Conforme especificação:
-    Entrada: Ponteiro para a struct Tarefa
-    Saída: enum StatusTarefa com o status atual
+    Entrada: ponteiro para a struct Tarefa
+    Saída: status da tarefa
     
     Args:
         tarefa (Dict): Tarefa em formato dicionário
         
     Returns:
-        StatusTarefa ou None: Status atual da tarefa ou None em caso de erro
+        StatusTarefa ou None: Status da tarefa ou None em caso de erro
     """
     if tarefa is None:
         log_operacao("Tarefa", "Erro ao obter status", "Ponteiro de tarefa nulo")
@@ -282,8 +384,8 @@ def tarefa_get_status(tarefa: Dict[str, Any]) -> Optional[StatusTarefa]:
     
     try:
         return tarefa['status']
-    except KeyError:
-        log_operacao("Tarefa", "Erro ao obter status", "Campo status não encontrado")
+    except Exception as e:
+        log_operacao("Tarefa", "Erro ao obter status", f"Falha: {str(e)}")
         return None
 
 def tarefa_add_tag(tarefa: Dict[str, Any], tag) -> int:
@@ -291,8 +393,8 @@ def tarefa_add_tag(tarefa: Dict[str, Any], tag) -> int:
     Adiciona uma tag à tarefa.
     
     Conforme especificação:
-    Entrada: Ponteiro para a struct Tarefa, ponteiro para a struct Tag
-    Saída: 0 se adicionada com sucesso, -1 em caso de erro (ex: tag duplicada)
+    Entrada: ponteiro para a struct Tarefa e ponteiro para struct Tag
+    Saída: 0 em caso de sucesso, -1 em caso de erro
     
     Args:
         tarefa (Dict): Tarefa em formato dicionário
@@ -323,9 +425,10 @@ def tarefa_add_tag(tarefa: Dict[str, Any], tag) -> int:
             log_operacao("Tarefa", "Erro ao adicionar tag", f"Tag {tag_id} já está na tarefa")
             return ERRO
         
-        # Adiciona a tag
+        # Adiciona a tag à tarefa
         tarefa['tags'].append(tag_id)
         tarefa['data_modificacao'] = datetime.now()
+        
         log_operacao("Tarefa", "Tag adicionada", f"Tarefa ID: {tarefa['id']}, Tag ID: {tag_id}")
         return SUCESSO
         
@@ -338,17 +441,16 @@ def tarefa_list_tags(tarefa: Dict[str, Any], buffer: List, tamanho_max: int) -> 
     Lista as tags da tarefa.
     
     Conforme especificação:
-    Entrada: Ponteiro para a struct Tarefa, buffer para armazenar as tags,
-    tamanho máximo do buffer
-    Saída: número de tags listadas
+    Entrada: ponteiro para a struct Tarefa, buffer para receber as tags e tamanho máximo
+    Saída: quantidade de tags copiadas para o buffer
     
     Args:
         tarefa (Dict): Tarefa em formato dicionário
-        buffer (List): Lista para armazenar as tags
+        buffer (List): Buffer para receber as tags
         tamanho_max (int): Tamanho máximo do buffer
         
     Returns:
-        int: Número de tags listadas
+        int: Quantidade de tags copiadas para o buffer
     """
     if tarefa is None:
         log_operacao("Tarefa", "Erro ao listar tags", "Ponteiro de tarefa nulo")
@@ -362,12 +464,12 @@ def tarefa_list_tags(tarefa: Dict[str, Any], buffer: List, tamanho_max: int) -> 
         # Limpa o buffer
         buffer.clear()
         
-        # Copia as tags para o buffer (limitando ao tamanho máximo)
-        tags_para_copiar = tarefa['tags'][:tamanho_max]
-        buffer.extend(tags_para_copiar)
+        # Copia as tags para o buffer (limitado pelo tamanho máximo)
+        qtd_copiadas = min(len(tarefa['tags']), tamanho_max)
+        buffer.extend(tarefa['tags'][:qtd_copiadas])
         
-        log_operacao("Tarefa", "Tags listadas", f"Tarefa ID: {tarefa['id']}, Tags: {len(buffer)}")
-        return len(buffer)
+        log_operacao("Tarefa", "Tags listadas", f"Tarefa ID: {tarefa['id']}, Qtd: {qtd_copiadas}")
+        return qtd_copiadas
         
     except Exception as e:
         log_operacao("Tarefa", "Erro ao listar tags", f"Falha: {str(e)}")
@@ -378,7 +480,7 @@ def tarefa_get_titulo(tarefa: Dict[str, Any]) -> Optional[str]:
     Obtém o título da tarefa.
     
     Conforme especificação:
-    Entrada: Ponteiro para a struct Tarefa
+    Entrada: ponteiro para a struct Tarefa
     Saída: string com o título da tarefa
     
     Args:
@@ -393,8 +495,8 @@ def tarefa_get_titulo(tarefa: Dict[str, Any]) -> Optional[str]:
     
     try:
         return tarefa['titulo']
-    except KeyError:
-        log_operacao("Tarefa", "Erro ao obter título", "Campo título não encontrado")
+    except Exception as e:
+        log_operacao("Tarefa", "Erro ao obter título", f"Falha: {str(e)}")
         return None
 
 def tarefa_get_descricao(tarefa: Dict[str, Any]) -> Optional[str]:
@@ -402,7 +504,7 @@ def tarefa_get_descricao(tarefa: Dict[str, Any]) -> Optional[str]:
     Obtém a descrição da tarefa.
     
     Conforme especificação:
-    Entrada: Ponteiro para a struct Tarefa
+    Entrada: ponteiro para a struct Tarefa
     Saída: string com a descrição da tarefa
     
     Args:
@@ -417,8 +519,8 @@ def tarefa_get_descricao(tarefa: Dict[str, Any]) -> Optional[str]:
     
     try:
         return tarefa['descricao']
-    except KeyError:
-        log_operacao("Tarefa", "Erro ao obter descrição", "Campo descrição não encontrado")
+    except Exception as e:
+        log_operacao("Tarefa", "Erro ao obter descrição", f"Falha: {str(e)}")
         return None
 
 def tarefa_get_usuario_responsavel_id(tarefa: Dict[str, Any]) -> Optional[int]:
@@ -426,7 +528,7 @@ def tarefa_get_usuario_responsavel_id(tarefa: Dict[str, Any]) -> Optional[int]:
     Obtém o ID do usuário responsável pela tarefa.
     
     Conforme especificação:
-    Entrada: Ponteiro para a struct Tarefa
+    Entrada: ponteiro para a struct Tarefa
     Saída: ID do usuário responsável
     
     Args:
@@ -441,8 +543,8 @@ def tarefa_get_usuario_responsavel_id(tarefa: Dict[str, Any]) -> Optional[int]:
     
     try:
         return tarefa['usuario_responsavel_id']
-    except KeyError:
-        log_operacao("Tarefa", "Erro ao obter usuário responsável", "Campo usuário responsável não encontrado")
+    except Exception as e:
+        log_operacao("Tarefa", "Erro ao obter usuário responsável", f"Falha: {str(e)}")
         return None
 
 def tarefa_get_prazo(tarefa: Dict[str, Any]) -> Optional[datetime]:
@@ -450,7 +552,7 @@ def tarefa_get_prazo(tarefa: Dict[str, Any]) -> Optional[datetime]:
     Obtém o prazo da tarefa.
     
     Conforme especificação:
-    Entrada: Ponteiro para a struct Tarefa
+    Entrada: ponteiro para a struct Tarefa
     Saída: prazo da tarefa (time_t)
     
     Args:
@@ -465,17 +567,13 @@ def tarefa_get_prazo(tarefa: Dict[str, Any]) -> Optional[datetime]:
     
     try:
         return tarefa['prazo']
-    except KeyError:
-        log_operacao("Tarefa", "Erro ao obter prazo", "Campo prazo não encontrado")
+    except Exception as e:
+        log_operacao("Tarefa", "Erro ao obter prazo", f"Falha: {str(e)}")
         return None
 
 def tarefa_get_id(tarefa: Dict[str, Any]) -> Optional[int]:
     """
     Obtém o ID da tarefa.
-    
-    Conforme especificação:
-    Entrada: Ponteiro para a struct Tarefa
-    Saída: ID da tarefa
     
     Args:
         tarefa (Dict): Tarefa em formato dicionário
@@ -484,13 +582,12 @@ def tarefa_get_id(tarefa: Dict[str, Any]) -> Optional[int]:
         int ou None: ID da tarefa ou None em caso de erro
     """
     if tarefa is None:
-        log_operacao("Tarefa", "Erro ao obter ID", "Ponteiro de tarefa nulo")
         return None
     
     try:
         return tarefa['id']
-    except KeyError:
-        log_operacao("Tarefa", "Erro ao obter ID", "Campo ID não encontrado")
+    except Exception as e:
+        log_operacao("Tarefa", "Erro ao obter ID", f"Falha: {str(e)}")
         return None
 
 def tarefa_get_tags_ids(tarefa: Dict[str, Any]) -> List[int]:
@@ -501,14 +598,15 @@ def tarefa_get_tags_ids(tarefa: Dict[str, Any]) -> List[int]:
         tarefa (Dict): Tarefa em formato dicionário
         
     Returns:
-        List[int]: Lista de IDs das tags
+        List[int]: Lista de IDs das tags da tarefa
     """
     if tarefa is None:
         return []
     
     try:
         return tarefa['tags'].copy()
-    except KeyError:
+    except Exception as e:
+        log_operacao("Tarefa", "Erro ao obter tags", f"Falha: {str(e)}")
         return []
 
 def tarefa_remover_tag(tarefa: Dict[str, Any], tag) -> int:
@@ -544,13 +642,119 @@ def tarefa_remover_tag(tarefa: Dict[str, Any], tag) -> int:
             log_operacao("Tarefa", "Erro ao remover tag", f"Tag {tag_id} não está na tarefa")
             return ERRO
         
-        # Remove a tag
+        # Remove a tag da tarefa
         tarefa['tags'].remove(tag_id)
         tarefa['data_modificacao'] = datetime.now()
+        
         log_operacao("Tarefa", "Tag removida", f"Tarefa ID: {tarefa['id']}, Tag ID: {tag_id}")
         return SUCESSO
         
     except Exception as e:
         log_operacao("Tarefa", "Erro ao remover tag", f"Falha: {str(e)}")
+        return ERRO
+
+def tarefa_set_titulo(tarefa: Dict[str, Any], novo_titulo: str) -> int:
+    """
+    Altera o título da tarefa.
+    
+    Args:
+        tarefa (Dict): Tarefa em formato dicionário
+        novo_titulo (str): Novo título da tarefa
+        
+    Returns:
+        int: 0 para sucesso, -1 para erro
+    """
+    if tarefa is None:
+        log_operacao("Tarefa", "Erro ao alterar título", "Ponteiro de tarefa nulo")
+        return ERRO
+    
+    if not validar_string_nao_vazia(novo_titulo, "novo_titulo"):
+        log_operacao("Tarefa", "Erro ao alterar título", "Título inválido")
+        return ERRO
+    
+    if len(novo_titulo) > MAX_TITULO_LENGTH:
+        log_operacao("Tarefa", "Erro ao alterar título", f"Título muito longo (max {MAX_TITULO_LENGTH})")
+        return ERRO
+    
+    try:
+        titulo_antigo = tarefa['titulo']
+        tarefa['titulo'] = novo_titulo.strip()
+        tarefa['data_modificacao'] = datetime.now()
+        
+        log_operacao("Tarefa", "Título alterado", f"ID: {tarefa['id']}, '{titulo_antigo}' -> '{novo_titulo}'")
+        return SUCESSO
+        
+    except Exception as e:
+        log_operacao("Tarefa", "Erro ao alterar título", f"Falha: {str(e)}")
+        return ERRO
+
+def tarefa_set_descricao(tarefa: Dict[str, Any], nova_descricao: str) -> int:
+    """
+    Altera a descrição da tarefa.
+    
+    Args:
+        tarefa (Dict): Tarefa em formato dicionário
+        nova_descricao (str): Nova descrição da tarefa
+        
+    Returns:
+        int: 0 para sucesso, -1 para erro
+    """
+    if tarefa is None:
+        log_operacao("Tarefa", "Erro ao alterar descrição", "Ponteiro de tarefa nulo")
+        return ERRO
+    
+    if not validar_string_nao_vazia(nova_descricao, "nova_descricao"):
+        log_operacao("Tarefa", "Erro ao alterar descrição", "Descrição inválida")
+        return ERRO
+    
+    if len(nova_descricao) > MAX_DESCRICAO_LENGTH:
+        log_operacao("Tarefa", "Erro ao alterar descrição", f"Descrição muito longa (max {MAX_DESCRICAO_LENGTH})")
+        return ERRO
+    
+    try:
+        descricao_antiga = tarefa['descricao']
+        tarefa['descricao'] = nova_descricao.strip()
+        tarefa['data_modificacao'] = datetime.now()
+        
+        log_operacao("Tarefa", "Descrição alterada", f"ID: {tarefa['id']}, '{descricao_antiga}' -> '{nova_descricao}'")
+        return SUCESSO
+        
+    except Exception as e:
+        log_operacao("Tarefa", "Erro ao alterar descrição", f"Falha: {str(e)}")
+        return ERRO
+
+def tarefa_set_prazo(tarefa: Dict[str, Any], novo_prazo: datetime) -> int:
+    """
+    Altera o prazo da tarefa.
+    
+    Args:
+        tarefa (Dict): Tarefa em formato dicionário
+        novo_prazo (datetime): Novo prazo da tarefa
+        
+    Returns:
+        int: 0 para sucesso, -1 para erro
+    """
+    if tarefa is None:
+        log_operacao("Tarefa", "Erro ao alterar prazo", "Ponteiro de tarefa nulo")
+        return ERRO
+    
+    if novo_prazo is None:
+        log_operacao("Tarefa", "Erro ao alterar prazo", "Prazo nulo")
+        return ERRO
+    
+    if not isinstance(novo_prazo, datetime):
+        log_operacao("Tarefa", "Erro ao alterar prazo", "Prazo deve ser um objeto datetime")
+        return ERRO
+    
+    try:
+        prazo_antigo = tarefa['prazo']
+        tarefa['prazo'] = novo_prazo
+        tarefa['data_modificacao'] = datetime.now()
+        
+        log_operacao("Tarefa", "Prazo alterado", f"ID: {tarefa['id']}, '{prazo_antigo}' -> '{novo_prazo}'")
+        return SUCESSO
+        
+    except Exception as e:
+        log_operacao("Tarefa", "Erro ao alterar prazo", f"Falha: {str(e)}")
         return ERRO
 

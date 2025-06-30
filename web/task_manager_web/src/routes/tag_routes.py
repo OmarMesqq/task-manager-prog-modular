@@ -18,20 +18,19 @@ sys.path.insert(0, modules_path)
 
 try:
     from modules.gerenciamento_tarefas import (
-        gt_registrar_tag, gt_listar_todas_tags, gt_salvar_dados
+        gt_registrar_tag, gt_listar_todas_tags
     )
     from modules.tag import (
-        tag_criar, tag_destruir, tag_set_nome, tag_set_cor,
-        tag_get_id, tag_get_nome, tag_get_cor
+        tag_criar, tag_destruir, tag_to_dict, tag_from_dict,
+        tag_get_id, tag_get_nome, tag_get_cor,
+        tag_set_nome, tag_set_cor, tag_listar_todas
     )
 except ImportError as e:
     print(f"Erro ao importar módulos do Task Manager: {e}")
 
-tag_bp = Blueprint('tags', __name__)
+from src.utils import get_gt_system
 
-def get_gt_system():
-    """Obtém o sistema GT da configuração da aplicação"""
-    return current_app.config.get('GT_SYSTEM')
+tag_bp = Blueprint('tags', __name__)
 
 def tag_to_dict(tag):
     """Converte uma tag para dicionário para JSON"""
@@ -46,13 +45,14 @@ def tag_to_dict(tag):
 
 @tag_bp.route('/tags', methods=['GET'])
 def listar_tags():
-    """Lista todas as tags do sistema"""
+    """Lista todas as tags"""
     try:
         gt = get_gt_system()
         if not gt:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
-        tags = gt_listar_todas_tags(gt)
+        # Usa a função do módulo tag diretamente
+        tags = tag_listar_todas()
         tags_dict = [tag_to_dict(tag) for tag in tags]
         
         return jsonify({
@@ -80,12 +80,6 @@ def criar_tag():
         if 'nome' not in data or 'cor' not in data:
             return jsonify({'error': 'Campos obrigatórios: nome, cor'}), 400
         
-        # Verifica se já existe tag com o mesmo nome
-        tags_existentes = gt_listar_todas_tags(gt)
-        for tag_existente in tags_existentes:
-            if tag_get_nome(tag_existente).lower() == data['nome'].lower():
-                return jsonify({'error': 'Já existe uma tag com este nome'}), 409
-        
         # Cria a tag
         tag = tag_criar(data['nome'], data['cor'])
         if not tag:
@@ -96,9 +90,6 @@ def criar_tag():
         if resultado != 0:
             tag_destruir(tag)
             return jsonify({'error': 'Falha ao registrar tag no sistema'}), 500
-        
-        # Salva os dados após criar a tag
-        gt_salvar_dados(gt)
         
         return jsonify({
             'success': True,
@@ -117,7 +108,8 @@ def obter_tag(tag_id):
         if not gt:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
-        tags = gt_listar_todas_tags(gt)
+        # Usa a função do módulo tag diretamente
+        tags = tag_listar_todas()
         tag = next((t for t in tags if tag_get_id(t) == tag_id), None)
         
         if not tag:
@@ -144,33 +136,25 @@ def atualizar_tag(tag_id):
             return jsonify({'error': 'Dados não fornecidos'}), 400
         
         # Busca a tag
-        tags = gt_listar_todas_tags(gt)
+        tags = tag_listar_todas()
         tag = next((t for t in tags if tag_get_id(t) == tag_id), None)
         
         if not tag:
             return jsonify({'error': 'Tag não encontrada'}), 404
         
+        atualizado = False
         # Atualiza nome se fornecido
         if 'nome' in data:
-            # Verifica se já existe outra tag com o mesmo nome
-            for tag_existente in tags:
-                if (tag_get_id(tag_existente) != tag_id and 
-                    tag_get_nome(tag_existente).lower() == data['nome'].lower()):
-                    return jsonify({'error': 'Já existe uma tag com este nome'}), 409
-            
-            resultado = tag_set_nome(tag, data['nome'])
-            if resultado != 0:
+            resultado_nome = tag_set_nome(tag, data['nome'])
+            if resultado_nome != 0:
                 return jsonify({'error': 'Falha ao atualizar nome'}), 500
-        
+            atualizado = True
         # Atualiza cor se fornecida
         if 'cor' in data:
             resultado = tag_set_cor(tag, data['cor'])
             if resultado != 0:
                 return jsonify({'error': 'Falha ao atualizar cor'}), 500
-        
-        # Salva os dados após atualizar
-        if 'nome' in data or 'cor' in data:
-            gt_salvar_dados(gt)
+            atualizado = True
         
         return jsonify({
             'success': True,
@@ -183,42 +167,69 @@ def atualizar_tag(tag_id):
 
 @tag_bp.route('/tags/<int:tag_id>', methods=['DELETE'])
 def deletar_tag(tag_id):
-    """Remove uma tag (não implementado por segurança)"""
-    return jsonify({
-        'error': 'Remoção de tags não permitida por questões de integridade dos dados'
-    }), 405
-
-@tag_bp.route('/tags/<int:tag_id>/tasks', methods=['GET'])
-def listar_tarefas_tag(tag_id):
-    """Lista todas as tarefas que possuem uma tag específica"""
+    """Deleta uma tag"""
     try:
         gt = get_gt_system()
         if not gt:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
-        # Verifica se a tag existe
-        tags = gt_listar_todas_tags(gt)
+        # Busca a tag
+        tags = tag_listar_todas()
         tag = next((t for t in tags if tag_get_id(t) == tag_id), None)
         
         if not tag:
             return jsonify({'error': 'Tag não encontrada'}), 404
         
-        # Busca tarefas que possuem esta tag
-        from modules.gerenciamento_tarefas import gt_listar_todas_tarefas
-        from modules.tarefa import tarefa_get_tags_ids
+        # Remove a tag (destrói a instância)
+        tag_destruir(tag)
         
-        todas_tarefas = gt_listar_todas_tarefas(gt)
-        tarefas_tag = [t for t in todas_tarefas if tag_id in tarefa_get_tags_ids(t)]
+        return jsonify({
+            'success': True,
+            'message': 'Tag deletada com sucesso'
+        })
         
-        # Converte para dict
-        from .task_routes import tarefa_to_dict
-        tarefas_dict = [tarefa_to_dict(tarefa) for tarefa in tarefas_tag]
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@tag_bp.route('/tags/<int:tag_id>/tasks', methods=['GET'])
+def listar_tarefas_tag(tag_id):
+    """Lista todas as tarefas que usam uma tag específica"""
+    try:
+        gt = get_gt_system()
+        if not gt:
+            return jsonify({'error': 'Sistema não inicializado'}), 500
+        
+        # Busca a tag
+        tags = tag_listar_todas()
+        tag = next((t for t in tags if tag_get_id(t) == tag_id), None)
+        
+        if not tag:
+            return jsonify({'error': 'Tag não encontrada'}), 404
+        
+        # Lista todas as tarefas e filtra por tag
+        from modules.tarefa import tarefa_listar_todas
+        todas_tarefas = tarefa_listar_todas()
+        tarefas_tag = [
+            tarefa for tarefa in todas_tarefas 
+            if tag_id in tarefa['tags']
+        ]
+        
+        # Converte para formato JSON
+        tarefas_dict = []
+        for tarefa in tarefas_tag:
+            tarefas_dict.append({
+                'id': tarefa['id'],
+                'titulo': tarefa['titulo'],
+                'descricao': tarefa['descricao'],
+                'status': tarefa['status'].value if hasattr(tarefa['status'], 'value') else str(tarefa['status']),
+                'prazo': str(tarefa['prazo']),
+                'usuario_responsavel_id': tarefa['usuario_responsavel_id']
+            })
         
         return jsonify({
             'success': True,
             'data': tarefas_dict,
-            'count': len(tarefas_dict),
-            'tag': tag_to_dict(tag)
+            'count': len(tarefas_dict)
         })
         
     except Exception as e:

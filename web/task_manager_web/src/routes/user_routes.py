@@ -18,14 +18,17 @@ sys.path.insert(0, modules_path)
 
 try:
     from modules.gerenciamento_tarefas import (
-        gt_registrar_usuario, gt_listar_todos_usuarios, gt_salvar_dados
+        gt_registrar_usuario, gt_listar_todos_usuarios
     )
     from modules.usuario import (
-        usuario_criar, usuario_destruir, usuario_set_email,
-        usuario_get_id, usuario_get_nome, usuario_get_email, usuario_set_nome
+        usuario_criar, usuario_destruir, usuario_to_dict, usuario_from_dict,
+        usuario_get_id, usuario_get_nome, usuario_get_email,
+        usuario_set_nome, usuario_set_email, usuario_listar_todos
     )
 except ImportError as e:
     print(f"Erro ao importar módulos do Task Manager: {e}")
+
+from src.utils import get_gt_system
 
 user_bp = Blueprint('users', __name__)
 
@@ -46,13 +49,14 @@ def usuario_to_dict(usuario):
 
 @user_bp.route('/users', methods=['GET'])
 def listar_usuarios():
-    """Lista todos os usuários do sistema"""
+    """Lista todos os usuários"""
     try:
         gt = get_gt_system()
         if not gt:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
-        usuarios = gt_listar_todos_usuarios(gt)
+        # Usa a função do módulo usuario diretamente
+        usuarios = usuario_listar_todos()
         usuarios_dict = [usuario_to_dict(usuario) for usuario in usuarios]
         
         return jsonify({
@@ -91,9 +95,6 @@ def criar_usuario():
             usuario_destruir(usuario)
             return jsonify({'error': 'Falha ao registrar usuário no sistema'}), 500
         
-        # Salva os dados após criar o usuário
-        gt_salvar_dados(gt)
-        
         return jsonify({
             'success': True,
             'data': usuario_to_dict(usuario),
@@ -111,7 +112,8 @@ def obter_usuario(user_id):
         if not gt:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
-        usuarios = gt_listar_todos_usuarios(gt)
+        # Usa a função do módulo usuario diretamente
+        usuarios = usuario_listar_todos()
         usuario = next((u for u in usuarios if usuario_get_id(u) == user_id), None)
         
         if not usuario:
@@ -138,7 +140,7 @@ def atualizar_usuario(user_id):
             return jsonify({'error': 'Dados não fornecidos'}), 400
         
         # Busca o usuário
-        usuarios = gt_listar_todos_usuarios(gt)
+        usuarios = usuario_listar_todos()
         usuario = next((u for u in usuarios if usuario_get_id(u) == user_id), None)
         
         if not usuario:
@@ -157,9 +159,6 @@ def atualizar_usuario(user_id):
             if resultado != 0:
                 return jsonify({'error': 'Falha ao atualizar email'}), 500
             atualizado = True
-        # Salva os dados após atualizar
-        if atualizado:
-            gt_salvar_dados(gt)
         
         return jsonify({
             'success': True,
@@ -172,10 +171,29 @@ def atualizar_usuario(user_id):
 
 @user_bp.route('/users/<int:user_id>', methods=['DELETE'])
 def deletar_usuario(user_id):
-    """Remove um usuário (não implementado por segurança)"""
-    return jsonify({
-        'error': 'Remoção de usuários não permitida por questões de integridade dos dados'
-    }), 405
+    """Deleta um usuário"""
+    try:
+        gt = get_gt_system()
+        if not gt:
+            return jsonify({'error': 'Sistema não inicializado'}), 500
+        
+        # Busca o usuário
+        usuarios = usuario_listar_todos()
+        usuario = next((u for u in usuarios if usuario_get_id(u) == user_id), None)
+        
+        if not usuario:
+            return jsonify({'error': 'Usuário não encontrado'}), 404
+        
+        # Remove o usuário (destrói a instância)
+        usuario_destruir(usuario)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Usuário deletado com sucesso'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @user_bp.route('/users/<int:user_id>/tasks', methods=['GET'])
 def listar_tarefas_usuario(user_id):
@@ -185,29 +203,37 @@ def listar_tarefas_usuario(user_id):
         if not gt:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
-        # Verifica se o usuário existe
-        usuarios = gt_listar_todos_usuarios(gt)
+        # Busca o usuário
+        usuarios = usuario_listar_todos()
         usuario = next((u for u in usuarios if usuario_get_id(u) == user_id), None)
         
         if not usuario:
             return jsonify({'error': 'Usuário não encontrado'}), 404
         
-        # Busca tarefas do usuário
-        from modules.gerenciamento_tarefas import gt_listar_todas_tarefas
-        from modules.tarefa import tarefa_get_usuario_responsavel_id
+        # Lista todas as tarefas e filtra por usuário responsável
+        from modules.tarefa import tarefa_listar_todas
+        todas_tarefas = tarefa_listar_todas()
+        tarefas_usuario = [
+            tarefa for tarefa in todas_tarefas 
+            if tarefa['usuario_responsavel_id'] == user_id
+        ]
         
-        todas_tarefas = gt_listar_todas_tarefas(gt)
-        tarefas_usuario = [t for t in todas_tarefas if tarefa_get_usuario_responsavel_id(t) == user_id]
-        
-        # Converte para dict
-        from .task_routes import tarefa_to_dict
-        tarefas_dict = [tarefa_to_dict(tarefa) for tarefa in tarefas_usuario]
+        # Converte para formato JSON
+        tarefas_dict = []
+        for tarefa in tarefas_usuario:
+            tarefas_dict.append({
+                'id': tarefa['id'],
+                'titulo': tarefa['titulo'],
+                'descricao': tarefa['descricao'],
+                'status': tarefa['status'].value if hasattr(tarefa['status'], 'value') else str(tarefa['status']),
+                'prazo': str(tarefa['prazo']),
+                'tags': tarefa['tags']
+            })
         
         return jsonify({
             'success': True,
             'data': tarefas_dict,
-            'count': len(tarefas_dict),
-            'user': usuario_to_dict(usuario)
+            'count': len(tarefas_dict)
         })
         
     except Exception as e:

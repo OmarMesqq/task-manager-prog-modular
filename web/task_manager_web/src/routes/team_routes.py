@@ -18,21 +18,20 @@ sys.path.insert(0, modules_path)
 
 try:
     from modules.gerenciamento_tarefas import (
-        gt_registrar_time, gt_listar_todos_times, gt_listar_todos_usuarios, gt_salvar_dados
+        gt_registrar_time, gt_listar_todos_times
     )
     from modules.team import (
-        time_criar, time_destruir, time_adicionar_usuario, time_remover_usuario,
-        time_get_id, time_get_nome, time_qtd_membros, time_get_membros, time_set_nome
+        time_criar, time_destruir, time_to_dict, time_from_dict,
+        time_get_id, time_get_nome, time_get_membros, time_qtd_membros,
+        time_set_nome, time_adicionar_usuario, time_remover_usuario, time_listar_todos
     )
-    from modules.usuario import usuario_get_id
+    from modules.usuario import usuario_listar_todos, usuario_get_id
 except ImportError as e:
     print(f"Erro ao importar módulos do Task Manager: {e}")
 
-team_bp = Blueprint('teams', __name__)
+from src.utils import get_gt_system
 
-def get_gt_system():
-    """Obtém o sistema GT da configuração da aplicação"""
-    return current_app.config.get('GT_SYSTEM')
+team_bp = Blueprint('teams', __name__)
 
 def time_to_dict(time):
     """Converte um time para dicionário para JSON"""
@@ -42,19 +41,20 @@ def time_to_dict(time):
     return {
         'id': time_get_id(time),
         'nome': time_get_nome(time),
-        'qtd_membros': time_qtd_membros(time),
-        'membros_ids': time_get_membros(time)
+        'membros': time_get_membros(time),
+        'qtd_membros': time_qtd_membros(time)
     }
 
 @team_bp.route('/teams', methods=['GET'])
 def listar_times():
-    """Lista todos os times do sistema"""
+    """Lista todos os times"""
     try:
         gt = get_gt_system()
         if not gt:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
-        times = gt_listar_todos_times(gt)
+        # Usa a função do módulo team diretamente
+        times = time_listar_todos()
         times_dict = [time_to_dict(time) for time in times]
         
         return jsonify({
@@ -82,12 +82,6 @@ def criar_time():
         if 'nome' not in data:
             return jsonify({'error': 'Campo obrigatório: nome'}), 400
         
-        # Verifica se já existe time com o mesmo nome
-        times_existentes = gt_listar_todos_times(gt)
-        for time_existente in times_existentes:
-            if time_get_nome(time_existente).lower() == data['nome'].lower():
-                return jsonify({'error': 'Já existe um time com este nome'}), 409
-        
         # Cria o time
         time = time_criar(data['nome'])
         if not time:
@@ -98,9 +92,6 @@ def criar_time():
         if resultado != 0:
             time_destruir(time)
             return jsonify({'error': 'Falha ao registrar time no sistema'}), 500
-        
-        # Salva os dados após criar o time
-        gt_salvar_dados(gt)
         
         return jsonify({
             'success': True,
@@ -119,7 +110,8 @@ def obter_time(team_id):
         if not gt:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
-        times = gt_listar_todos_times(gt)
+        # Usa a função do módulo team diretamente
+        times = time_listar_todos()
         time = next((t for t in times if time_get_id(t) == team_id), None)
         
         if not time:
@@ -146,7 +138,7 @@ def atualizar_time(team_id):
             return jsonify({'error': 'Dados não fornecidos'}), 400
         
         # Busca o time
-        times = gt_listar_todos_times(gt)
+        times = time_listar_todos()
         time = next((t for t in times if time_get_id(t) == team_id), None)
         
         if not time:
@@ -154,18 +146,9 @@ def atualizar_time(team_id):
         
         # Atualiza nome se fornecido
         if 'nome' in data:
-            # Verifica se já existe outro time com o mesmo nome
-            for time_existente in times:
-                if (time_get_id(time_existente) != team_id and 
-                    time_get_nome(time_existente).lower() == data['nome'].lower()):
-                    return jsonify({'error': 'Já existe um time com este nome'}), 409
-            
             resultado = time_set_nome(time, data['nome'])
             if resultado != 0:
                 return jsonify({'error': 'Falha ao atualizar nome'}), 500
-            
-            # Salva os dados após atualizar
-            gt_salvar_dados(gt)
         
         return jsonify({
             'success': True,
@@ -178,65 +161,55 @@ def atualizar_time(team_id):
 
 @team_bp.route('/teams/<int:team_id>', methods=['DELETE'])
 def deletar_time(team_id):
-    """Remove um time (não implementado por segurança)"""
-    return jsonify({
-        'error': 'Remoção de times não permitida por questões de integridade dos dados'
-    }), 405
-
-@team_bp.route('/teams/<int:team_id>/members', methods=['GET'])
-def listar_membros_time(team_id):
-    """Lista todos os membros de um time"""
+    """Deleta um time"""
     try:
         gt = get_gt_system()
         if not gt:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Busca o time
-        times = gt_listar_todos_times(gt)
+        times = time_listar_todos()
         time = next((t for t in times if time_get_id(t) == team_id), None)
         
         if not time:
             return jsonify({'error': 'Time não encontrado'}), 404
         
-        # Busca informações dos membros
-        membros_ids = time_get_membros(time)
-        usuarios = gt_listar_todos_usuarios(gt)
-        
-        membros = []
-        for membro_id in membros_ids:
-            usuario = next((u for u in usuarios if usuario_get_id(u) == membro_id), None)
-            if usuario:
-                from .user_routes import usuario_to_dict
-                membros.append(usuario_to_dict(usuario))
+        # Remove o time (destrói a instância)
+        time_destruir(time)
         
         return jsonify({
             'success': True,
-            'data': membros,
-            'count': len(membros),
-            'team': time_to_dict(time)
+            'message': 'Time deletado com sucesso'
         })
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@team_bp.route('/teams/<int:team_id>/members/<int:user_id>', methods=['POST'])
-def adicionar_membro_time(team_id, user_id):
-    """Adiciona um usuário ao time"""
+@team_bp.route('/teams/<int:team_id>/users', methods=['POST'])
+def adicionar_usuario_time(team_id):
+    """Adiciona um usuário a um time"""
     try:
         gt = get_gt_system()
         if not gt:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'Dados não fornecidos'}), 400
+        
+        if 'user_id' not in data:
+            return jsonify({'error': 'Campo obrigatório: user_id'}), 400
+        
         # Busca o time
-        times = gt_listar_todos_times(gt)
+        times = time_listar_todos()
         time = next((t for t in times if time_get_id(t) == team_id), None)
         
         if not time:
             return jsonify({'error': 'Time não encontrado'}), 404
         
         # Busca o usuário
-        usuarios = gt_listar_todos_usuarios(gt)
-        usuario = next((u for u in usuarios if usuario_get_id(u) == user_id), None)
+        usuarios = usuario_listar_todos()
+        usuario = next((u for u in usuarios if usuario_get_id(u) == data['user_id']), None)
         
         if not usuario:
             return jsonify({'error': 'Usuário não encontrado'}), 404
@@ -246,35 +219,32 @@ def adicionar_membro_time(team_id, user_id):
         if resultado != 0:
             return jsonify({'error': 'Falha ao adicionar usuário ao time'}), 500
         
-        # Salva os dados após adicionar membro
-        gt_salvar_dados(gt)
-        
         return jsonify({
             'success': True,
-            'message': 'Usuário adicionado ao time com sucesso',
-            'team': time_to_dict(time)
+            'data': time_to_dict(time),
+            'message': 'Usuário adicionado ao time com sucesso'
         })
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@team_bp.route('/teams/<int:team_id>/members/<int:user_id>', methods=['DELETE'])
-def remover_membro_time(team_id, user_id):
-    """Remove um usuário do time"""
+@team_bp.route('/teams/<int:team_id>/users/<int:user_id>', methods=['DELETE'])
+def remover_usuario_time(team_id, user_id):
+    """Remove um usuário de um time"""
     try:
         gt = get_gt_system()
         if not gt:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Busca o time
-        times = gt_listar_todos_times(gt)
+        times = time_listar_todos()
         time = next((t for t in times if time_get_id(t) == team_id), None)
         
         if not time:
             return jsonify({'error': 'Time não encontrado'}), 404
         
         # Busca o usuário
-        usuarios = gt_listar_todos_usuarios(gt)
+        usuarios = usuario_listar_todos()
         usuario = next((u for u in usuarios if usuario_get_id(u) == user_id), None)
         
         if not usuario:
@@ -285,51 +255,48 @@ def remover_membro_time(team_id, user_id):
         if resultado != 0:
             return jsonify({'error': 'Falha ao remover usuário do time'}), 500
         
-        # Salva os dados após remover membro
-        gt_salvar_dados(gt)
-        
         return jsonify({
             'success': True,
-            'message': 'Usuário removido do time com sucesso',
-            'team': time_to_dict(time)
+            'data': time_to_dict(time),
+            'message': 'Usuário removido do time com sucesso'
         })
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@team_bp.route('/teams/<int:team_id>/tasks', methods=['GET'])
-def listar_tarefas_time(team_id):
-    """Lista todas as tarefas de um time específico"""
+@team_bp.route('/teams/<int:team_id>/users', methods=['GET'])
+def listar_usuarios_time(team_id):
+    """Lista todos os usuários de um time"""
     try:
         gt = get_gt_system()
         if not gt:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Busca o time
-        times = gt_listar_todos_times(gt)
+        times = time_listar_todos()
         time = next((t for t in times if time_get_id(t) == team_id), None)
         
         if not time:
             return jsonify({'error': 'Time não encontrado'}), 404
         
-        # Busca tarefas do time
-        from modules.gerenciamento_tarefas import gt_listar_tarefas_time
+        # Obtém os membros do time
+        membros_ids = time_get_membros(time)
         
-        qtd_out = [0]
-        tarefas = gt_listar_tarefas_time(gt, time, qtd_out)
+        # Busca os usuários correspondentes
+        usuarios = usuario_listar_todos()
+        usuarios_time = [
+            usuario for usuario in usuarios 
+            if usuario_get_id(usuario) in membros_ids
+        ]
         
-        if tarefas is None:
-            return jsonify({'error': 'Falha ao listar tarefas do time'}), 500
-        
-        # Converte para dict
-        from .task_routes import tarefa_to_dict
-        tarefas_dict = [tarefa_to_dict(tarefa) for tarefa in tarefas]
+        # Converte para formato JSON
+        from .user_routes import usuario_to_dict
+        usuarios_dict = [usuario_to_dict(usuario) for usuario in usuarios_time]
         
         return jsonify({
             'success': True,
-            'data': tarefas_dict,
-            'count': len(tarefas_dict),
-            'team': time_to_dict(time)
+            'data': usuarios_dict,
+            'count': len(usuarios_dict)
         })
         
     except Exception as e:

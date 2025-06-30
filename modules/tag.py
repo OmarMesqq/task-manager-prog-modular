@@ -13,6 +13,13 @@ Funções principais:
 
 Conforme especificação: O módulo não conhece nem depende dos outros módulos.
 Ele apenas expõe sua interface por meio de funções públicas.
+
+ESTRUTURAS ENCAPSULADAS:
+- _tags_registradas: Dicionário com todas as tags registradas em memória
+- tag_carregar_dados: Carrega tags dos arquivos JSON
+- tag_salvar_dados: Salva tags nos arquivos JSON
+- tag_registrar: Registra uma tag no sistema
+- tag_listar_todas: Lista todas as tags registradas
 """
 
 from typing import Optional, List, Dict, Any
@@ -30,7 +37,11 @@ __all__ = [
     "tag_get_cor",
     "tag_get_id",
     "tag_from_dict",
-    "tag_to_dict"
+    "tag_to_dict",
+    "tag_carregar_dados",
+    "tag_salvar_dados",
+    "tag_registrar",
+    "tag_listar_todas"
 ]
 
 # Adiciona o diretório raiz ao path se não estiver lá
@@ -39,8 +50,11 @@ root_dir = os.path.dirname(current_dir)
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
-from config import SUCESSO, ERRO, validar_cor_hex, MAX_NOME_LENGTH, MAX_COR_LENGTH
-from utils import gerar_id_unico, validar_string_nao_vazia, log_operacao, formatar_data
+from config import SUCESSO, ERRO, validar_cor_hex, MAX_NOME_LENGTH, MAX_COR_LENGTH, TAGS_FILE
+from utils import gerar_id_unico, validar_string_nao_vazia, log_operacao, formatar_data, carregar_json, salvar_json
+
+# Estrutura encapsulada para armazenar todas as tags registradas
+_tags_registradas: Dict[int, Dict[str, Any]] = {}
 
 def _criar_tag_dict(nome: str, cor: str) -> Dict[str, Any]:
     """
@@ -103,6 +117,90 @@ def tag_from_dict(dados: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     except Exception as e:
         print(f"Erro ao criar tag a partir de dict: {e}")
         return None
+
+# Funções de gerenciamento das estruturas encapsuladas
+
+def tag_carregar_dados() -> None:
+    """
+    Carrega todas as tags dos arquivos JSON para a estrutura encapsulada.
+    Esta função é chamada apenas uma vez durante a inicialização.
+    """
+    try:
+        dados_tags = carregar_json(TAGS_FILE)
+        if dados_tags:
+            for tag_data in dados_tags.values():
+                tag = tag_from_dict(tag_data)
+                if tag:
+                    _tags_registradas[tag['id']] = tag
+        
+        log_operacao("Tag", "Dados carregados", f"Total de tags: {len(_tags_registradas)}")
+                    
+    except Exception as e:
+        log_operacao("Tag", "Erro ao carregar dados", str(e))
+
+def tag_salvar_dados() -> bool:
+    """
+    Salva todas as tags da estrutura encapsulada nos arquivos JSON.
+    Esta função é chamada apenas uma vez durante a finalização.
+    
+    Returns:
+        bool: True se salvou com sucesso, False caso contrário
+    """
+    try:
+        dados_tags = {str(tid): tag_to_dict(tag) for tid, tag in _tags_registradas.items()}
+        if salvar_json(dados_tags, TAGS_FILE):
+            log_operacao("Tag", "Dados salvos", f"Total de tags: {len(_tags_registradas)}")
+            return True
+        else:
+            log_operacao("Tag", "Erro ao salvar dados", "Falha na persistência")
+            return False
+        
+    except Exception as e:
+        log_operacao("Tag", "Erro ao salvar dados", str(e))
+        return False
+
+def tag_registrar(tag: Dict[str, Any]) -> int:
+    """
+    Registra uma tag na estrutura encapsulada.
+    
+    Args:
+        tag (Dict): Tag em formato dicionário a ser registrada
+        
+    Returns:
+        int: 0 para sucesso, -1 para erro
+    """
+    if tag is None:
+        log_operacao("Tag", "Erro ao registrar", "Ponteiro Tag nulo")
+        return ERRO
+    
+    try:
+        tag_id = tag_get_id(tag)
+        if tag_id is None:
+            log_operacao("Tag", "Erro ao registrar", "ID da tag inválido")
+            return ERRO
+        
+        # Verifica se a tag já está registrada
+        if tag_id in _tags_registradas:
+            log_operacao("Tag", "Erro ao registrar", f"Tag {tag_id} já registrada")
+            return ERRO
+        
+        # Registra a tag
+        _tags_registradas[tag_id] = tag
+        log_operacao("Tag", "Tag registrada", f"ID: {tag_id}")
+        return SUCESSO
+        
+    except Exception as e:
+        log_operacao("Tag", "Erro ao registrar", f"Falha: {str(e)}")
+        return ERRO
+
+def tag_listar_todas() -> List[Dict[str, Any]]:
+    """
+    Lista todas as tags registradas na estrutura encapsulada.
+    
+    Returns:
+        List[Dict]: Lista de todas as tags em formato dicionário
+    """
+    return list(_tags_registradas.values())
 
 # Funções da interface pública (conforme especificação)
 
@@ -199,7 +297,8 @@ def tag_set_nome(tag: Dict[str, Any], novo_nome: str) -> int:
         nome_antigo = tag['nome']
         tag['nome'] = novo_nome.strip()
         tag['data_modificacao'] = datetime.now()
-        log_operacao("Tag", "Nome alterado", f"ID: {tag['id']}, De: {nome_antigo} Para: {novo_nome}")
+        
+        log_operacao("Tag", "Nome alterado", f"ID: {tag['id']}, '{nome_antigo}' -> '{novo_nome}'")
         return SUCESSO
         
     except Exception as e:
@@ -211,7 +310,7 @@ def tag_set_cor(tag: Dict[str, Any], nova_cor: str) -> int:
     Altera a cor da tag.
     
     Conforme especificação:
-    Entrada: ponteiro para tag e nova cor em hexadecimal
+    Entrada: ponteiro para tag e nova cor
     Saída: 0 em caso de sucesso, -1 em caso de erro
     
     Args:
@@ -237,7 +336,8 @@ def tag_set_cor(tag: Dict[str, Any], nova_cor: str) -> int:
         cor_antiga = tag['cor']
         tag['cor'] = nova_cor.upper()
         tag['data_modificacao'] = datetime.now()
-        log_operacao("Tag", "Cor alterada", f"ID: {tag['id']}, De: {cor_antiga} Para: {nova_cor}")
+        
+        log_operacao("Tag", "Cor alterada", f"ID: {tag['id']}, '{cor_antiga}' -> '{nova_cor}'")
         return SUCESSO
         
     except Exception as e:
@@ -264,8 +364,8 @@ def tag_get_nome(tag: Dict[str, Any]) -> Optional[str]:
     
     try:
         return tag['nome']
-    except KeyError:
-        log_operacao("Tag", "Erro ao obter nome", "Campo nome não encontrado")
+    except Exception as e:
+        log_operacao("Tag", "Erro ao obter nome", f"Falha: {str(e)}")
         return None
 
 def tag_get_cor(tag: Dict[str, Any]) -> Optional[str]:
@@ -274,7 +374,7 @@ def tag_get_cor(tag: Dict[str, Any]) -> Optional[str]:
     
     Conforme especificação:
     Entrada: ponteiro para a struct Tag
-    Saída: string com a cor da tag em hexadecimal
+    Saída: string com a cor da tag
     
     Args:
         tag (Dict): Tag em formato dicionário
@@ -288,17 +388,13 @@ def tag_get_cor(tag: Dict[str, Any]) -> Optional[str]:
     
     try:
         return tag['cor']
-    except KeyError:
-        log_operacao("Tag", "Erro ao obter cor", "Campo cor não encontrado")
+    except Exception as e:
+        log_operacao("Tag", "Erro ao obter cor", f"Falha: {str(e)}")
         return None
 
 def tag_get_id(tag: Dict[str, Any]) -> Optional[int]:
     """
     Obtém o ID da tag.
-    
-    Conforme especificação:
-    Entrada: ponteiro para a struct Tag
-    Saída: ID da tag
     
     Args:
         tag (Dict): Tag em formato dicionário
@@ -307,12 +403,11 @@ def tag_get_id(tag: Dict[str, Any]) -> Optional[int]:
         int ou None: ID da tag ou None em caso de erro
     """
     if tag is None:
-        log_operacao("Tag", "Erro ao obter ID", "Ponteiro de tag nulo")
         return None
     
     try:
         return tag['id']
-    except KeyError:
-        log_operacao("Tag", "Erro ao obter ID", "Campo ID não encontrado")
+    except Exception as e:
+        log_operacao("Tag", "Erro ao obter ID", f"Falha: {str(e)}")
         return None
 

@@ -14,6 +14,13 @@ Funções principais:
 
 Conforme especificação: O módulo não conhece nem depende dos outros módulos.
 Ele apenas expõe sua interface por meio de funções públicas.
+
+ESTRUTURAS ENCAPSULADAS:
+- _usuarios_registrados: Dicionário com todos os usuários registrados em memória
+- usuario_carregar_dados: Carrega usuários dos arquivos JSON
+- usuario_salvar_dados: Salva usuários nos arquivos JSON
+- usuario_registrar: Registra um usuário no sistema
+- usuario_listar_todos: Lista todos os usuários registrados
 """
 
 from typing import Optional, List, Dict, Any
@@ -32,7 +39,11 @@ __all__ = [
     "usuario_get_email",
     "usuario_get_id",
     "usuario_to_dict",
-    "usuario_from_dict"
+    "usuario_from_dict",
+    "usuario_carregar_dados",
+    "usuario_salvar_dados",
+    "usuario_registrar",
+    "usuario_listar_todos"
 ]
 
 # Adiciona o diretório raiz ao path se não estiver lá
@@ -41,8 +52,11 @@ root_dir = os.path.dirname(current_dir)
 if root_dir not in sys.path:
     sys.path.insert(0, root_dir)
 
-from config import SUCESSO, ERRO, validar_email, MAX_NOME_LENGTH, MAX_EMAIL_LENGTH
-from utils import gerar_id_unico, validar_string_nao_vazia, log_operacao, formatar_data
+from config import SUCESSO, ERRO, validar_email, MAX_NOME_LENGTH, MAX_EMAIL_LENGTH, USUARIOS_FILE
+from utils import gerar_id_unico, validar_string_nao_vazia, log_operacao, formatar_data, carregar_json, salvar_json
+
+# Estrutura encapsulada para armazenar todos os usuários registrados
+_usuarios_registrados: Dict[int, Dict[str, Any]] = {}
 
 def _criar_usuario_dict(nome: str, email: str) -> Dict[str, Any]:
     """
@@ -105,6 +119,90 @@ def usuario_from_dict(dados: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     except Exception as e:
         print(f"Erro ao criar usuário a partir de dict: {e}")
         return None
+
+# Funções de gerenciamento das estruturas encapsuladas
+
+def usuario_carregar_dados() -> None:
+    """
+    Carrega todos os usuários dos arquivos JSON para a estrutura encapsulada.
+    Esta função é chamada apenas uma vez durante a inicialização.
+    """
+    try:
+        dados_usuarios = carregar_json(USUARIOS_FILE)
+        if dados_usuarios:
+            for user_data in dados_usuarios.values():
+                usuario = usuario_from_dict(user_data)
+                if usuario:
+                    _usuarios_registrados[usuario['id']] = usuario
+        
+        log_operacao("Usuario", "Dados carregados", f"Total de usuários: {len(_usuarios_registrados)}")
+                    
+    except Exception as e:
+        log_operacao("Usuario", "Erro ao carregar dados", str(e))
+
+def usuario_salvar_dados() -> bool:
+    """
+    Salva todos os usuários da estrutura encapsulada nos arquivos JSON.
+    Esta função é chamada apenas uma vez durante a finalização.
+    
+    Returns:
+        bool: True se salvou com sucesso, False caso contrário
+    """
+    try:
+        dados_usuarios = {str(uid): usuario_to_dict(user) for uid, user in _usuarios_registrados.items()}
+        if salvar_json(dados_usuarios, USUARIOS_FILE):
+            log_operacao("Usuario", "Dados salvos", f"Total de usuários: {len(_usuarios_registrados)}")
+            return True
+        else:
+            log_operacao("Usuario", "Erro ao salvar dados", "Falha na persistência")
+            return False
+        
+    except Exception as e:
+        log_operacao("Usuario", "Erro ao salvar dados", str(e))
+        return False
+
+def usuario_registrar(usuario: Dict[str, Any]) -> int:
+    """
+    Registra um usuário na estrutura encapsulada.
+    
+    Args:
+        usuario (Dict): Usuário em formato dicionário a ser registrado
+        
+    Returns:
+        int: 0 para sucesso, -1 para erro
+    """
+    if usuario is None:
+        log_operacao("Usuario", "Erro ao registrar", "Ponteiro Usuario nulo")
+        return ERRO
+    
+    try:
+        usuario_id = usuario_get_id(usuario)
+        if usuario_id is None:
+            log_operacao("Usuario", "Erro ao registrar", "ID do usuário inválido")
+            return ERRO
+        
+        # Verifica se o usuário já está registrado
+        if usuario_id in _usuarios_registrados:
+            log_operacao("Usuario", "Erro ao registrar", f"Usuário {usuario_id} já registrado")
+            return ERRO
+        
+        # Registra o usuário
+        _usuarios_registrados[usuario_id] = usuario
+        log_operacao("Usuario", "Usuário registrado", f"ID: {usuario_id}")
+        return SUCESSO
+        
+    except Exception as e:
+        log_operacao("Usuario", "Erro ao registrar", f"Falha: {str(e)}")
+        return ERRO
+
+def usuario_listar_todos() -> List[Dict[str, Any]]:
+    """
+    Lista todos os usuários registrados na estrutura encapsulada.
+    
+    Returns:
+        List[Dict]: Lista de todos os usuários em formato dicionário
+    """
+    return list(_usuarios_registrados.values())
 
 # Funções da interface pública (conforme especificação)
 
@@ -210,7 +308,8 @@ def usuario_set_email(usuario: Dict[str, Any], novo_email: str) -> int:
         email_antigo = usuario['email']
         usuario['email'] = novo_email.strip().lower()
         usuario['data_modificacao'] = datetime.now()
-        log_operacao("Usuario", "Email alterado", f"ID: {usuario['id']}, De: {email_antigo} Para: {novo_email}")
+        
+        log_operacao("Usuario", "Email alterado", f"ID: {usuario['id']}, '{email_antigo}' -> '{novo_email}'")
         return SUCESSO
         
     except Exception as e:
@@ -220,31 +319,38 @@ def usuario_set_email(usuario: Dict[str, Any], novo_email: str) -> int:
 def usuario_set_nome(usuario: Dict[str, Any], novo_nome: str) -> int:
     """
     Altera o nome do usuário.
+    
+    Conforme especificação:
+    Entrada: ponteiro para struct Usuario e string com novo nome
+    Saída: 0 se sucesso, -1 se houver erro (como ponteiros nulos ou nome inválido)
+    
     Args:
         usuario (Dict): Usuário em formato dicionário
         novo_nome (str): Novo nome do usuário
+        
     Returns:
         int: 0 para sucesso, -1 para erro
     """
     if usuario is None:
         log_operacao("Usuario", "Erro ao alterar nome", "Ponteiro de usuário nulo")
         return ERRO
-
+    
     if not validar_string_nao_vazia(novo_nome, "novo_nome"):
         log_operacao("Usuario", "Erro ao alterar nome", "Nome inválido")
         return ERRO
-
+    
     if len(novo_nome) > MAX_NOME_LENGTH:
         log_operacao("Usuario", "Erro ao alterar nome", f"Nome muito longo (max {MAX_NOME_LENGTH})")
         return ERRO
-
+    
     try:
         nome_antigo = usuario['nome']
         usuario['nome'] = novo_nome.strip()
         usuario['data_modificacao'] = datetime.now()
-        log_operacao("Usuario", "Nome alterado", f"ID: {usuario['id']}, De: {nome_antigo} Para: {novo_nome}")
+        
+        log_operacao("Usuario", "Nome alterado", f"ID: {usuario['id']}, '{nome_antigo}' -> '{novo_nome}'")
         return SUCESSO
-
+        
     except Exception as e:
         log_operacao("Usuario", "Erro ao alterar nome", f"Falha: {str(e)}")
         return ERRO
@@ -254,7 +360,7 @@ def usuario_get_nome(usuario: Dict[str, Any]) -> Optional[str]:
     Obtém o nome do usuário.
     
     Conforme especificação:
-    Entrada: ponteiro para struct Usuario
+    Entrada: ponteiro para a struct Usuario
     Saída: string com o nome do usuário
     
     Args:
@@ -269,8 +375,8 @@ def usuario_get_nome(usuario: Dict[str, Any]) -> Optional[str]:
     
     try:
         return usuario['nome']
-    except KeyError:
-        log_operacao("Usuario", "Erro ao obter nome", "Campo nome não encontrado")
+    except Exception as e:
+        log_operacao("Usuario", "Erro ao obter nome", f"Falha: {str(e)}")
         return None
 
 def usuario_get_email(usuario: Dict[str, Any]) -> Optional[str]:
@@ -278,8 +384,8 @@ def usuario_get_email(usuario: Dict[str, Any]) -> Optional[str]:
     Obtém o email do usuário.
     
     Conforme especificação:
-    Entrada: ponteiro para struct Usuario
-    Saída: string com o e-mail do usuário
+    Entrada: ponteiro para a struct Usuario
+    Saída: string com o email do usuário
     
     Args:
         usuario (Dict): Usuário em formato dicionário
@@ -293,17 +399,13 @@ def usuario_get_email(usuario: Dict[str, Any]) -> Optional[str]:
     
     try:
         return usuario['email']
-    except KeyError:
-        log_operacao("Usuario", "Erro ao obter email", "Campo email não encontrado")
+    except Exception as e:
+        log_operacao("Usuario", "Erro ao obter email", f"Falha: {str(e)}")
         return None
 
 def usuario_get_id(usuario: Dict[str, Any]) -> Optional[int]:
     """
     Obtém o ID do usuário.
-    
-    Conforme especificação:
-    Entrada: ponteiro para struct Usuario
-    Saída: ID do usuário
     
     Args:
         usuario (Dict): Usuário em formato dicionário
@@ -312,12 +414,11 @@ def usuario_get_id(usuario: Dict[str, Any]) -> Optional[int]:
         int ou None: ID do usuário ou None em caso de erro
     """
     if usuario is None:
-        log_operacao("Usuario", "Erro ao obter ID", "Ponteiro de usuário nulo")
         return None
     
     try:
         return usuario['id']
-    except KeyError:
-        log_operacao("Usuario", "Erro ao obter ID", "Campo ID não encontrado")
+    except Exception as e:
+        log_operacao("Usuario", "Erro ao obter ID", f"Falha: {str(e)}")
         return None
 
