@@ -48,7 +48,7 @@ def listar_tags():
     """Lista todas as tags"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Usa a função do módulo tag diretamente
@@ -69,7 +69,7 @@ def criar_tag():
     """Cria uma nova tag"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         data = request.get_json()
@@ -105,7 +105,7 @@ def obter_tag(tag_id):
     """Obtém uma tag específica"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Usa a função do módulo tag diretamente
@@ -128,7 +128,7 @@ def atualizar_tag(tag_id):
     """Atualiza uma tag existente"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         data = request.get_json()
@@ -170,7 +170,7 @@ def deletar_tag(tag_id):
     """Deleta uma tag"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Busca a tag
@@ -196,7 +196,7 @@ def listar_tarefas_tag(tag_id):
     """Lista todas as tarefas que usam uma tag específica"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Busca a tag

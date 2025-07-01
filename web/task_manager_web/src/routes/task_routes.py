@@ -61,7 +61,7 @@ def listar_tarefas():
     """Lista todas as tarefas"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Usa a função do módulo tarefa diretamente
@@ -82,7 +82,7 @@ def criar_tarefa():
     """Cria uma nova tarefa"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         data = request.get_json()
@@ -146,7 +146,7 @@ def obter_tarefa(task_id):
     """Obtém uma tarefa específica"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Usa a função do módulo tarefa diretamente
@@ -169,7 +169,7 @@ def atualizar_tarefa(task_id):
     """Atualiza uma tarefa existente"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         data = request.get_json()
@@ -226,7 +226,7 @@ def deletar_tarefa(task_id):
     """Deleta uma tarefa"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Busca a tarefa
@@ -254,7 +254,7 @@ def adicionar_tag_tarefa(task_id):
     """Adiciona uma tag a uma tarefa"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         data = request.get_json()
@@ -297,7 +297,7 @@ def remover_tag_tarefa(task_id, tag_id):
     """Remove uma tag de uma tarefa"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Busca a tarefa
@@ -333,7 +333,7 @@ def listar_tarefas_por_status(status):
     """Lista todas as tarefas com um status específico"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         # Valida o status
@@ -365,7 +365,7 @@ def exportar_tarefas():
     """Exporta tarefas para CSV"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         data = request.get_json()
@@ -392,7 +392,7 @@ def estatisticas_tarefas():
     """Retorna estatísticas das tarefas"""
     try:
         gt = get_gt_system()
-        if not gt:
+        if gt is None:
             return jsonify({'error': 'Sistema não inicializado'}), 500
         
         tarefas = gt_listar_todas_tarefas(gt)
