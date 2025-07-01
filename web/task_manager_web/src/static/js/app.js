@@ -769,7 +769,7 @@ async function handleTaskForm(event) {
         const taskData = {
             titulo: document.getElementById('task-title').value,
             descricao: document.getElementById('task-description').value,
-            usuario_id: parseInt(document.getElementById('task-user').value),
+            usuario_responsavel_id: parseInt(document.getElementById('task-user').value),
             time_id: parseInt(document.getElementById('task-team').value),
             prazo: document.getElementById('task-deadline').value,
             tags_ids: appState.selectedTags
