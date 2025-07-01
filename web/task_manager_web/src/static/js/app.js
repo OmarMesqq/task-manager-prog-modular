@@ -44,7 +44,7 @@ const utils = {
             minute: '2-digit'
         });
     },
-    
+
     // Formata status para exibição
     formatStatus: (status) => {
         const statusMap = {
@@ -54,7 +54,7 @@ const utils = {
         };
         return statusMap[status] || status;
     },
-    
+
     // Obtém classe CSS para status
     getStatusClass: (status) => {
         const classMap = {
@@ -64,7 +64,7 @@ const utils = {
         };
         return classMap[status] || 'status-aberta';
     },
-    
+
     // Trunca texto
     truncateText: (text, maxLength = 100) => {
         if (!text) return '';
@@ -84,22 +84,22 @@ const api = {
             },
             ...options
         };
-        
+
         try {
             const response = await fetch(url, config);
             const data = await response.json();
-            
+
             if (!response.ok) {
                 throw new Error(data.error || 'Erro na requisição');
             }
-            
+
             return data;
         } catch (error) {
             console.error(`Erro na API (${endpoint}):`, error);
             throw error;
         }
     },
-    
+
     // Tasks
     tasks: {
         list: () => api.request('/tasks'),
@@ -117,7 +117,7 @@ const api = {
         }),
         stats: () => api.request('/tasks/stats')
     },
-    
+
     // Users
     users: {
         list: () => api.request('/users'),
@@ -129,9 +129,12 @@ const api = {
         update: (id, user) => api.request(`/users/${id}`, {
             method: 'PUT',
             body: JSON.stringify(user)
+        }),
+        delete: (id) => api.request(`/users/${id}`, {          // ⟵ NEW
+            method: 'DELETE'
         })
     },
-    
+
     // Teams
     teams: {
         list: () => api.request('/teams'),
@@ -151,7 +154,7 @@ const api = {
             method: 'DELETE'
         })
     },
-    
+
     // Tags
     tags: {
         list: () => api.request('/tags'),
@@ -173,24 +176,24 @@ const ui = {
     showLoading: () => {
         document.getElementById('loading').classList.remove('hidden');
     },
-    
+
     // Esconde loading
     hideLoading: () => {
         document.getElementById('loading').classList.add('hidden');
     },
-    
+
     // Mostra toast notification
     showToast: (message, type = 'info') => {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
-        
+
         const bgColor = {
             success: 'bg-green-500',
             error: 'bg-red-500',
             warning: 'bg-yellow-500',
             info: 'bg-blue-500'
         }[type] || 'bg-blue-500';
-        
+
         toast.className = `${bgColor} text-white px-6 py-3 rounded-lg shadow-lg fade-in`;
         toast.innerHTML = `
             <div class="flex items-center">
@@ -200,10 +203,10 @@ const ui = {
                 </button>
             </div>
         `;
-        
+
         container.appendChild(toast);
         lucide.createIcons();
-        
+
         // Remove automaticamente após 5 segundos
         setTimeout(() => {
             if (toast.parentElement) {
@@ -220,7 +223,7 @@ function showSection(sectionName) {
         link.classList.remove('text-primary-600', 'bg-primary-50');
         link.classList.add('text-gray-500');
     });
-    
+
     // Add active class to current nav link (only if event exists)
     if (event && event.target) {
         event.target.classList.remove('text-gray-500');
@@ -229,28 +232,28 @@ function showSection(sectionName) {
         // Find the correct nav link and activate it
         const navLinks = document.querySelectorAll('.nav-link');
         navLinks.forEach(link => {
-            if (link.textContent.toLowerCase().includes(sectionName.toLowerCase()) || 
+            if (link.textContent.toLowerCase().includes(sectionName.toLowerCase()) ||
                 link.getAttribute('onclick')?.includes(sectionName)) {
                 link.classList.remove('text-gray-500');
                 link.classList.add('text-primary-600', 'bg-primary-50');
             }
         });
     }
-    
+
     // Hide all sections
     document.querySelectorAll('.section').forEach(section => {
         section.classList.add('hidden');
     });
-    
+
     // Show selected section
     const targetSection = document.getElementById(`${sectionName}-section`);
     if (targetSection) {
         targetSection.classList.remove('hidden');
     }
-    
+
     // Update app state
     appState.currentSection = sectionName;
-    
+
     // Load section data
     loadSectionData(sectionName);
 }
@@ -263,7 +266,7 @@ function toggleMobileMenu() {
 // Data Loading
 async function loadSectionData(sectionName) {
     ui.showLoading();
-    
+
     try {
         switch (sectionName) {
             case 'dashboard':
@@ -299,45 +302,45 @@ async function loadDashboardData() {
             api.tags.list(),
             api.tasks.stats()
         ]);
-        
+
         // Atualiza o estado apenas se os dados mudaram
         const newTasks = tasksResponse.data || [];
         const newUsers = usersResponse.data || [];
         const newTeams = teamsResponse.data || [];
         const newTags = tagsResponse.data || [];
         const newStats = statsResponse.data || {};
-        
+
         // Verifica se os dados mudaram antes de atualizar
         const tasksChanged = JSON.stringify(newTasks) !== JSON.stringify(appState.tasks);
         const usersChanged = JSON.stringify(newUsers) !== JSON.stringify(appState.users);
         const teamsChanged = JSON.stringify(newTeams) !== JSON.stringify(appState.teams);
         const tagsChanged = JSON.stringify(newTags) !== JSON.stringify(appState.tags);
-        
+
         // Verifica se é o carregamento inicial (estado vazio)
         const isInitialLoad = appState.tasks.length === 0 && appState.users.length === 0;
-        
+
         appState.tasks = newTasks;
         appState.users = newUsers;
         appState.teams = newTeams;
         appState.tags = newTags;
         appState.stats = newStats;
-        
+
         // Atualiza cards de estatísticas
         document.getElementById('total-tasks').textContent = appState.tasks.length;
         document.getElementById('total-users').textContent = appState.users.length;
         document.getElementById('total-teams').textContent = appState.teams.length;
         document.getElementById('total-tags').textContent = appState.tags.length;
-        
+
         // Renderiza gráfico se as tarefas mudaram OU se é carregamento inicial
         if (tasksChanged || isInitialLoad) {
             renderStatusChart();
         }
-        
+
         // Renderiza tarefas recentes se as tarefas mudaram OU se é carregamento inicial
         if (tasksChanged || isInitialLoad) {
             renderRecentTasks();
         }
-        
+
     } catch (error) {
         console.error('Erro ao carregar dashboard:', error);
         throw error;
@@ -353,18 +356,18 @@ async function loadTasksData() {
             api.teams.list(),
             api.tags.list()
         ]);
-        
+
         appState.tasks = tasksResponse.data || [];
         appState.users = usersResponse.data || [];
         appState.teams = teamsResponse.data || [];
         appState.tags = tagsResponse.data || [];
-        
+
         // Popula filtros
         populateTaskFilters();
-        
+
         // Renderiza tarefas
         renderTasks();
-        
+
     } catch (error) {
         console.error('Erro ao carregar tarefas:', error);
         throw error;
@@ -407,24 +410,24 @@ async function loadTagsData() {
 // Rendering Functions
 function renderStatusChart() {
     const ctx = document.getElementById('statusChart');
-    
+
     // Destrói o gráfico anterior se existir
     if (statusChart) {
         statusChart.destroy();
     }
-    
+
     const statusCounts = {
         'aberta': 0,
         'em_progresso': 0,
         'concluida': 0
     };
-    
+
     appState.tasks.forEach(task => {
         if (task.status && statusCounts.hasOwnProperty(task.status)) {
             statusCounts[task.status]++;
         }
     });
-    
+
     statusChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -480,12 +483,12 @@ function renderRecentTasks() {
     const recentTasks = appState.tasks
         .sort((a, b) => new Date(b.prazo) - new Date(a.prazo))
         .slice(0, 5);
-    
+
     if (recentTasks.length === 0) {
         container.innerHTML = '<p class="text-gray-500 text-center py-4">Nenhuma tarefa encontrada</p>';
         return;
     }
-    
+
     container.innerHTML = recentTasks.map(task => `
         <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
             <div class="flex-1">
@@ -501,27 +504,27 @@ function renderRecentTasks() {
 
 function renderTasks() {
     const container = document.getElementById('tasks-grid');
-    
+
     // Aplica os filtros ativos
     let filteredTasks = appState.tasks.filter(task => {
         // Filtro por status
         if (appState.activeFilters.status && task.status !== appState.activeFilters.status) {
             return false;
         }
-        
+
         // Filtro por usuário
         if (appState.activeFilters.user && task.usuario_responsavel_id !== parseInt(appState.activeFilters.user)) {
             return false;
         }
-        
+
         // Filtro por time - temporariamente desabilitado até implementação no backend
         // if (appState.activeFilters.team && task.time_id !== parseInt(appState.activeFilters.team)) {
         //     return false;
         // }
-        
+
         return true;
     });
-    
+
     if (filteredTasks.length === 0) {
         container.innerHTML = `
             <div class="col-span-full text-center py-12">
@@ -533,11 +536,11 @@ function renderTasks() {
         lucide.createIcons();
         return;
     }
-    
+
     container.innerHTML = filteredTasks.map(task => {
         const user = appState.users.find(u => u.id === task.usuario_responsavel_id);
         const taskTags = appState.tags.filter(tag => task.tags_ids && task.tags_ids.includes(tag.id));
-        
+
         return `
             <div class="bg-white p-6 rounded-lg shadow card-hover">
                 <div class="flex justify-between items-start mb-4">
@@ -580,13 +583,13 @@ function renderTasks() {
             </div>
         `;
     }).join('');
-    
+
     lucide.createIcons();
 }
 
 function renderUsers() {
     const tbody = document.getElementById('users-table-body');
-    
+
     if (appState.users.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -597,7 +600,7 @@ function renderUsers() {
         `;
         return;
     }
-    
+
     tbody.innerHTML = appState.users.map(user => `
         <tr class="hover:bg-gray-50">
             <td class="px-6 py-4 whitespace-nowrap">
@@ -615,23 +618,29 @@ function renderUsers() {
             <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">${user.email}</div>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <button onclick="editUser(${user.id})" class="text-indigo-600 hover:text-indigo-900 mr-3">
-                    Editar
-                </button>
-                <button onclick="viewUserTasks(${user.id})" class="text-green-600 hover:text-green-900">
-                    Ver Tarefas
-                </button>
-            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+    <div class="flex space-x-3">
+        <button onclick="viewUserTasks(${user.id})" class="text-green-600 hover:text-green-900">
+            Ver Tarefas
+        </button>
+        <button onclick="editUser(${user.id})" class="text-indigo-600 hover:text-indigo-900">
+            Editar
+        </button>
+        <button onclick="deleteUser(${user.id})" class="text-red-600 hover:text-red-900">
+            Excluir
+        </button>
+    </div>
+</td>
+
         </tr>
     `).join('');
-    
+
     lucide.createIcons();
 }
 
 function renderTeams() {
     const container = document.getElementById('teams-grid');
-    
+
     if (appState.teams.length === 0) {
         container.innerHTML = `
             <div class="col-span-full text-center py-12">
@@ -643,7 +652,7 @@ function renderTeams() {
         lucide.createIcons();
         return;
     }
-    
+
     container.innerHTML = appState.teams.map(team => `
         <div class="bg-white p-6 rounded-lg shadow card-hover">
             <div class="flex items-center justify-between mb-4">
@@ -664,13 +673,13 @@ function renderTeams() {
             </div>
         </div>
     `).join('');
-    
+
     lucide.createIcons();
 }
 
 function renderTags() {
     const container = document.getElementById('tags-grid');
-    
+
     if (appState.tags.length === 0) {
         container.innerHTML = `
             <div class="col-span-full text-center py-12">
@@ -682,7 +691,7 @@ function renderTags() {
         lucide.createIcons();
         return;
     }
-    
+
     container.innerHTML = appState.tags.map(tag => `
         <div class="bg-white p-4 rounded-lg shadow card-hover">
             <div class="flex items-center justify-between">
@@ -696,7 +705,7 @@ function renderTags() {
             </div>
         </div>
     `).join('');
-    
+
     lucide.createIcons();
 }
 
@@ -720,14 +729,14 @@ function openUserModal() {
 function closeUserModal() {
     document.getElementById('user-modal').classList.add('hidden');
     document.getElementById('user-form').reset();
-    
+
     // Reseta o estado do modal
     const modalTitle = document.querySelector('#user-modal h3');
     const submitButton = document.querySelector('#user-form button[type="submit"]');
-    
+
     modalTitle.textContent = 'Novo Usuário';
     submitButton.textContent = 'Criar Usuário';
-    
+
     // Remove o ID de edição
     document.getElementById('user-form').removeAttribute('data-edit-user-id');
 }
@@ -754,7 +763,7 @@ function closeTagModal() {
 async function handleTaskForm(event) {
     event.preventDefault();
     ui.showLoading();
-    
+
     try {
         const formData = new FormData(event.target);
         const taskData = {
@@ -765,15 +774,15 @@ async function handleTaskForm(event) {
             prazo: document.getElementById('task-deadline').value,
             tags_ids: appState.selectedTags
         };
-        
+
         await api.tasks.create(taskData);
         ui.showToast('Tarefa criada com sucesso!', 'success');
         closeTaskModal();
-        
+
         if (appState.currentSection === 'tasks') {
             await loadTasksData();
         }
-        
+
     } catch (error) {
         ui.showToast(`Erro ao criar tarefa: ${error.message}`, 'error');
     } finally {
@@ -784,16 +793,16 @@ async function handleTaskForm(event) {
 async function handleUserForm(event) {
     event.preventDefault();
     ui.showLoading();
-    
+
     try {
         const userData = {
             nome: document.getElementById('user-name').value,
             email: document.getElementById('user-email').value
         };
-        
+
         // Verifica se é uma edição ou criação
         const editUserId = document.getElementById('user-form').getAttribute('data-edit-user-id');
-        
+
         if (editUserId) {
             // É uma edição
             await api.users.update(parseInt(editUserId), userData);
@@ -803,13 +812,13 @@ async function handleUserForm(event) {
             await api.users.create(userData);
             ui.showToast('Usuário criado com sucesso!', 'success');
         }
-        
+
         closeUserModal();
-        
+
         if (appState.currentSection === 'users') {
             await loadUsersData();
         }
-        
+
     } catch (error) {
         ui.showToast(`Erro ao ${editUserId ? 'atualizar' : 'criar'} usuário: ${error.message}`, 'error');
     } finally {
@@ -820,20 +829,20 @@ async function handleUserForm(event) {
 async function handleTeamForm(event) {
     event.preventDefault();
     ui.showLoading();
-    
+
     try {
         const teamData = {
             nome: document.getElementById('team-name').value
         };
-        
+
         await api.teams.create(teamData);
         ui.showToast('Time criado com sucesso!', 'success');
         closeTeamModal();
-        
+
         if (appState.currentSection === 'teams') {
             await loadTeamsData();
         }
-        
+
     } catch (error) {
         ui.showToast(`Erro ao criar time: ${error.message}`, 'error');
     } finally {
@@ -844,21 +853,21 @@ async function handleTeamForm(event) {
 async function handleTagForm(event) {
     event.preventDefault();
     ui.showLoading();
-    
+
     try {
         const tagData = {
             nome: document.getElementById('tag-name').value,
             cor: document.getElementById('tag-color').value
         };
-        
+
         await api.tags.create(tagData);
         ui.showToast('Tag criada com sucesso!', 'success');
         closeTagModal();
-        
+
         if (appState.currentSection === 'tags') {
             await loadTagsData();
         }
-        
+
     } catch (error) {
         ui.showToast(`Erro ao criar tag: ${error.message}`, 'error');
     } finally {
@@ -874,14 +883,14 @@ function populateTaskModal() {
     appState.users.forEach(user => {
         userSelect.innerHTML += `<option value="${user.id}">${user.nome}</option>`;
     });
-    
+
     // Popula times
     const teamSelect = document.getElementById('task-team');
     teamSelect.innerHTML = '<option value="">Selecione um time</option>';
     appState.teams.forEach(team => {
         teamSelect.innerHTML += `<option value="${team.id}">${team.nome}</option>`;
     });
-    
+
     // Popula tags
     const tagsContainer = document.getElementById('task-tags');
     tagsContainer.innerHTML = appState.tags.map(tag => `
@@ -901,7 +910,7 @@ function populateTaskFilters() {
     appState.users.forEach(user => {
         userFilter.innerHTML += `<option value="${user.id}">${user.nome}</option>`;
     });
-    
+
     // Popula filtro de times
     const teamFilter = document.getElementById('team-filter');
     teamFilter.innerHTML = '<option value="">Todos os Times</option>';
@@ -914,7 +923,7 @@ function toggleTagSelection(tagId) {
     const index = appState.selectedTags.indexOf(tagId);
     const checkbox = event.target;
     const span = checkbox.nextElementSibling;
-    
+
     if (index === -1) {
         appState.selectedTags.push(tagId);
         span.style.opacity = '1';
@@ -932,25 +941,25 @@ async function updateTaskStatus(taskId) {
     if (statusUpdateTimeout) {
         clearTimeout(statusUpdateTimeout);
     }
-    
+
     // Aplica debounce de 300ms
     statusUpdateTimeout = setTimeout(async () => {
         const task = appState.tasks.find(t => t.id === taskId);
         if (!task) return;
-        
+
         const statusOptions = [
             { value: 'aberta', label: 'Aberta' },
             { value: 'em_progresso', label: 'Em Progresso' },
             { value: 'concluida', label: 'Concluída' }
         ];
-        
+
         const currentIndex = statusOptions.findIndex(s => s.value === task.status);
         const nextIndex = (currentIndex + 1) % statusOptions.length;
         const newStatus = statusOptions[nextIndex].value;
-        
+
         try {
             ui.showLoading();
-            
+
             // Envia apenas o status atualizado
             const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
                 method: 'PUT',
@@ -959,14 +968,14 @@ async function updateTaskStatus(taskId) {
                 },
                 body: JSON.stringify({ status: newStatus })
             });
-            
+
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.error || 'Erro ao atualizar status');
             }
-            
+
             ui.showToast('Status atualizado com sucesso!', 'success');
-            
+
             // Recarrega os dados da seção atual
             if (appState.currentSection === 'dashboard') {
                 await loadDashboardData();
@@ -983,7 +992,7 @@ async function updateTaskStatus(taskId) {
 
 async function deleteTask(taskId) {
     if (!confirm('Tem certeza que deseja excluir esta tarefa?')) return;
-    
+
     try {
         ui.showLoading();
         await api.tasks.delete(taskId);
@@ -1001,17 +1010,17 @@ function applyTaskFilters() {
     const statusFilter = document.getElementById('status-filter').value;
     const userFilter = document.getElementById('user-filter').value;
     const teamFilter = document.getElementById('team-filter').value;
-    
+
     // Atualiza o estado dos filtros ativos
     appState.activeFilters = {
         status: statusFilter,
         user: userFilter,
         team: teamFilter
     };
-    
+
     // Renderiza as tarefas com os filtros aplicados
     renderTasks();
-    
+
     ui.showToast('Filtros aplicados!', 'success');
 }
 
@@ -1020,17 +1029,17 @@ function clearTaskFilters() {
     document.getElementById('status-filter').value = '';
     document.getElementById('user-filter').value = '';
     document.getElementById('team-filter').value = '';
-    
+
     // Limpa o estado dos filtros ativos
     appState.activeFilters = {
         status: '',
         user: '',
         team: ''
     };
-    
+
     // Renderiza todas as tarefas
     renderTasks();
-    
+
     ui.showToast('Filtros limpos!', 'info');
 }
 
@@ -1043,24 +1052,24 @@ async function editUser(userId) {
             ui.showToast('Usuário não encontrado', 'error');
             return;
         }
-        
+
         // Preenche o modal com os dados do usuário
         document.getElementById('user-name').value = user.nome;
         document.getElementById('user-email').value = user.email;
-        
+
         // Altera o título e botão do modal
         const modalTitle = document.querySelector('#user-modal h3');
         const submitButton = document.querySelector('#user-form button[type="submit"]');
-        
+
         modalTitle.textContent = 'Editar Usuário';
         submitButton.textContent = 'Atualizar Usuário';
-        
+
         // Adiciona o ID do usuário ao formulário para identificação
         document.getElementById('user-form').setAttribute('data-edit-user-id', userId);
-        
+
         // Abre o modal
         openUserModal();
-        
+
     } catch (error) {
         ui.showToast(`Erro ao carregar dados do usuário: ${error.message}`, 'error');
     }
@@ -1074,57 +1083,88 @@ async function viewUserTasks(userId) {
             ui.showToast('Usuário não encontrado', 'error');
             return;
         }
-        
+
         // Define o filtro de usuário
         appState.activeFilters = {
             status: '',
             user: userId.toString(),
             team: ''
         };
-        
+
         // Atualiza o filtro na interface
         document.getElementById('user-filter').value = userId;
         document.getElementById('status-filter').value = '';
         document.getElementById('team-filter').value = '';
-        
+
         // Muda para a seção de tarefas
         showSection('tasks');
-        
+
         // Recarrega os dados das tarefas
         await loadTasksData();
-        
+
         ui.showToast(`Mostrando tarefas de ${user.nome}`, 'info');
-        
+
     } catch (error) {
         ui.showToast(`Erro ao carregar tarefas do usuário: ${error.message}`, 'error');
     }
 }
 
+async function deleteUser(userId) {
+    // Defensive guard: prevent accidental admin self-deletion, etc.
+    if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
+
+    try {
+        ui.showLoading();
+        await api.users.delete(userId);
+        ui.showToast('Usuário excluído com sucesso!', 'success');
+
+        // Refresh data only if we are in a section that displays users.
+        if (appState.currentSection === 'users') {
+            await loadUsersData();
+        }
+
+        /*
+         * Optional: if you are currently showing tasks filtered by this user,
+         * you may also want to clear that filter or reload tasks:
+         *
+         * if (appState.activeFilters.user === String(userId)) {
+         *     clearTaskFilters();
+         *     await loadTasksData();
+         * }
+         */
+    } catch (error) {
+        ui.showToast(`Erro ao excluir usuário: ${error.message}`, 'error');
+    } finally {
+        ui.hideLoading();
+    }
+}
+
+
 // Event Listeners
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Inicializa ícones Lucide
     lucide.createIcons();
-    
+
     // Configura event listeners dos formulários
     document.getElementById('task-form').addEventListener('submit', handleTaskForm);
     document.getElementById('user-form').addEventListener('submit', handleUserForm);
     document.getElementById('team-form').addEventListener('submit', handleTeamForm);
     document.getElementById('tag-form').addEventListener('submit', handleTagForm);
-    
+
     // Sincroniza color picker com input de texto
     const colorPicker = document.getElementById('tag-color');
     const colorText = document.getElementById('tag-color-text');
-    
-    colorPicker.addEventListener('change', function() {
+
+    colorPicker.addEventListener('change', function () {
         colorText.value = this.value;
     });
-    
-    colorText.addEventListener('change', function() {
+
+    colorText.addEventListener('change', function () {
         if (/^#[0-9A-F]{6}$/i.test(this.value)) {
             colorPicker.value = this.value;
         }
     });
-    
+
     // Carrega dados iniciais com pequeno delay para garantir DOM carregado
     setTimeout(() => {
         showSection('dashboard');
@@ -1149,4 +1189,5 @@ window.applyTaskFilters = applyTaskFilters;
 window.clearTaskFilters = clearTaskFilters;
 window.editUser = editUser;
 window.viewUserTasks = viewUserTasks;
+window.deleteUser = deleteUser;
 
